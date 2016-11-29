@@ -947,7 +947,14 @@ TBOOL CPlayerBase::CheckDeadPlayerBaseCondForClear( SUserInfo *pstUser )
 
     TUINT32 udwCastleLevel = CCityBase::GetBuildingLevelByFuncType(pstCity, EN_BUILDING_TYPE__CASTLE);
     TBOOL bDeadTime = FALSE;
-    if(udwCastleLevel <= 7)
+    if(udwCastleLevel <= 4)
+    {
+        if(udwCurTime - ptbPlayer->m_nUtime > 8 * 3600)
+        {
+            bDeadTime = TRUE;
+        }
+    }
+    else if(udwCastleLevel <= 7)
     {
         if(udwCurTime - ptbPlayer->m_nUtime > 36 * 3600)
         {

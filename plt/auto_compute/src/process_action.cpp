@@ -3257,6 +3257,9 @@ TINT32 CProcessAction::ProcessMarchDragonAttack(SSession *pstSession)
         TBOOL bEliteReward = FALSE;
         CWarBase::GetDropRewardResult(&pstSession->m_stMonsterNode, bNormalReward, bEliteReward);
 
+        //此时不推map数据...
+        pstSession->m_dwReqMapPushFlag = 1;
+
         if(FALSE == bNormalReward
            && FALSE == bEliteReward)
         {
@@ -3594,6 +3597,9 @@ TINT32 CProcessAction::ProcessMarchDragonFighting(SSession *pstSession)
         ptbReqAction->Set_Etime(ptbReqAction->m_nBtime + ptbReqAction->m_nCtime);
         //ptbReqAction->DeleteField(TbMARCH_ACTION_FIELD_TAL);
         ptbReqAction->Set_Tal(0, UPDATE_ACTION_TYPE_DELETE);
+
+        //此时要推map数据...
+        pstSession->m_dwReqMapPushFlag = 2;
 
         // 更新action状态
         pstSession->m_ucReqMarchFlag = EN_TABLE_UPDT_FLAG__CHANGE;

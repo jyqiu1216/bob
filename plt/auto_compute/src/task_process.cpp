@@ -4632,11 +4632,18 @@ TINT32 CTaskProcess::GetSessionUpdtRequest(SSession* pstSession)
                 //        pstSession->m_vecAwsReq.size(), pstSession->m_stMapItem.m_nId, pstSession->m_udwSeqNo));
                 //}
                 //else
+                TSE_LOG_DEBUG(m_poServLog, ("[wavetest]GetSessionUpdtRequest[%u]: update tpos[%ld] [seq=%u]",
+                    pstSession->m_vecAwsReq.size(), pstSession->m_stMapItem.m_nId, pstSession->m_udwSeqNo));
+                if (pstSession->m_dwReqMapPushFlag != 1)
                 {
-                    TSE_LOG_DEBUG(m_poServLog, ("[wavetest]GetSessionUpdtRequest[%u]: update tpos[%ld] [seq=%u]",
-                        pstSession->m_vecAwsReq.size(), pstSession->m_stMapItem.m_nId, pstSession->m_udwSeqNo));
                     CAuPushData::AddPushData_Wild(&pstSession->m_objAuPushDataNode.m_objPushDataMap, &pstSession->m_stMapItem);
                 }                
+            }
+            else if (pstSession->m_dwReqMapPushFlag == 2)
+            {
+                TSE_LOG_DEBUG(m_poServLog, ("[wavetest]GetSessionUpdtRequest: force push tpos[%ld] [seq=%u]",
+                    pstSession->m_stMapItem.m_nId, pstSession->m_udwSeqNo));
+                CAuPushData::AddPushData_Wild(&pstSession->m_objAuPushDataNode.m_objPushDataMap, &pstSession->m_stMapItem);
             }
         }
         else if (pstSession->m_stMapItem.m_nId != 0)
@@ -4647,6 +4654,13 @@ TINT32 CTaskProcess::GetSessionUpdtRequest(SSession* pstSession)
             tbMap.Set_Id(pstSession->m_stMapItem.m_nId);
             tbMap.Set_Sid(pstSession->m_stMapItem.m_nSid);
             CAwsRequest::UpdateItem(pstSession, &tbMap, ExpectedDesc(), 0, true);
+
+            if (pstSession->m_dwReqMapPushFlag == 2)
+            {
+                TSE_LOG_DEBUG(m_poServLog, ("[wavetest]GetSessionUpdtRequest: force push tpos[%ld] [seq=%u]",
+                    pstSession->m_stMapItem.m_nId, pstSession->m_udwSeqNo));
+                CAuPushData::AddPushData_Wild(&pstSession->m_objAuPushDataNode.m_objPushDataMap, &pstSession->m_stMapItem);
+            }
         }
     }
     else

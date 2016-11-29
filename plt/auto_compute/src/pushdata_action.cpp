@@ -66,8 +66,8 @@ TINT32 CAuPushData::AuPushData( SSession *pstSession )
 
     //real push data¡ª¡ªpush map(action & wild)
     Json::Value jsonMapData;
-    GetPushData_BlockMap(pobjMapData->m_vecActionList, pobjMapData->m_vecWild, jsonMapData, pstSession->m_stSourceUser.m_tbPlayer.m_nSid);
-    PushDataBasic_Map(pstSession, jsonMapData, pstSession->m_stSourceUser.m_tbPlayer.m_nSid);
+    GetPushData_BlockMap(pobjMapData->m_vecActionList, pobjMapData->m_vecWild, jsonMapData, pstSession->m_udwReqSvrId);
+    PushDataBasic_Map(pstSession, jsonMapData, pstSession->m_udwReqSvrId);
 
     if (pstSession->bKingChanged == TRUE)
     {

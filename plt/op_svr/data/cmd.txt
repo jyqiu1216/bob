@@ -1,0 +1,36 @@
+====================================================
+	cmd								| key	| type	
+====================================|=======|=======
+	hero_kill						| key0	| 0		
+	al_join							| key0	| 1		
+	al_leave						| aid	| 1		
+	al_kick							| aid	| 1		 
+	al_allow_join					| aid	| 1		
+	al_reject_join					| aid	| 1		
+	al_pos_change					| aid	| 1		 
+	al_policy_change				| aid	| 1		
+	al_desc_change					| aid	| 1		
+	al_notice_change				| aid	| 1		
+	al_lang_change					| aid	| 1		
+	al_help							| aid	| 1		
+	al_help_request					| key0	| 2		
+	al_help_all						| aid	| 1		
+	al_item_exchange				| aid	| 1		
+	al_item_buy						| aid	| 1		
+	al_item_mark					| aid	| 1		
+	al_item_unmark					| aid	| 1		
+	al_item_mark_clear				| aid	| 1		
+	al_avatar_change				| aid	| 1		
+	al_nick_change					| aid	| 1		
+	al_name_change					| aid	| 1		
+	al_invite						| key0	| 2		
+	al_invited_join					| aid	| 1		
+	al_set_hive_pos					| aid	| 1		
+====================================|=======|=======
+	operate_al_change_chancellor	| key0	| 1		 
+	operate_add_loyalty_fund		| aid	| 1		
+====================================================
+ 
+	uid      ===> 0
+	aid      ===> 1
+	task_id  ===> 2

@@ -1,0 +1,27 @@
+{
+	"command":  //需要对除了自身以外用户数据进行加锁的命令字
+	{
+		"uid": 0,  //参数来自uid字段，加锁类型为0 [自身uid加锁流程已经存在，目前该字段无效]
+		"aid": 1,  //参数来自aid字段，加锁类型为1
+		"0": 2,  //参数来自key0字段，加锁类型为2
+	},
+}
+
+加锁类型：按照给定方法将参数转换为加锁id
+EN_LOCK_ID_TYPE__UID = 0,
+EN_LOCK_ID_TYPE__AID = 1,
+EN_LOCK_ID_TYPE__TASK_ID = 2,
+
+key -> lock_id:
+case EN_LOCK_ID_TYPE__UID:  //[100,000,001,000, 1000,000,000,000]
+    uddwLockId = USER_ID_LOCK_OFFSET + uddwKey;
+	
+case EN_LOCK_ID_TYPE__AID:
+    uddwLockId = ALLIANCE_ID_LOCK_OFFSET + uddwKey; //(1000,000,000,000, 1000 << 32]
+	
+case EN_LOCK_ID_TYPE__TASK_ID:  //(1000 << 32, MAX]
+    uddwLockId = TASK_ID_LOCK_OFFSET + uddwKey;
+	
+#define USER_ID_LOCK_OFFSET         (100000000000LL)    //100,000,000,000
+#define ALLIANCE_ID_LOCK_OFFSET     (1000000000000LL)  //1000,000,000,000
+#define TASK_ID_LOCK_OFFSET         (0LL)

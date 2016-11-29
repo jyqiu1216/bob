@@ -445,6 +445,8 @@ struct SSession
     TBOOL bKingChanged;
     TINT32 dwRawThroneAlid;
 
+    TINT32 m_dwReqMapPushFlag; //1: 强行不推 2: 强行推...
+
     void ResetAwsReq()
     {
         for (unsigned int i = 0; i < m_vecAwsReq.size(); ++i)
@@ -730,6 +732,7 @@ struct SSession
 
         bKingChanged = FALSE;
         dwRawThroneAlid = 0;
+        m_dwReqMapPushFlag = 0;
     }
 };
 

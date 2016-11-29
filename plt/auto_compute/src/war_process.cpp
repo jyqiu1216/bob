@@ -1434,7 +1434,10 @@ TVOID CWarProcess::CaptureDragonThrone(SSession *pstSession, SBattleNode *pstAtt
                     ptbCatchDragon->Set_Ctime(ptbAction->m_bParam[0].m_ddwMarchingTime);
                 }
             }
+
             ptbCatchDragon->Set_Etime(ptbCatchDragon->m_nBtime + ptbCatchDragon->m_nCtime);
+            ptbCatchDragon->Set_Sbid(CMapBase::GetBlockIdFromPos(ptbCatchDragon->m_nScid));
+            ptbCatchDragon->Set_Tbid(CMapBase::GetBlockIdFromPos(ptbCatchDragon->m_nTpos));
 
             ptbCatchDragon->m_bPrison_param[0].stDragon = ptbReqMarch->m_bParam[0].m_stDragon;
             ptbCatchDragon->SetFlag(TbMARCH_ACTION_FIELD_PRISON_PARAM);
