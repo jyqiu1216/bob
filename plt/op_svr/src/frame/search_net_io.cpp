@@ -112,8 +112,18 @@ void CSearchNetIO::OnTasksFinishedCallBack(LTasksGroup *pstTasksGrp)
 
     //---------req process begin-------------
     //TODO:
+    TSE_LOG_DEBUG(m_poServLog, ("recv res next=%u,exp_serv=%u,session[%p] [seq=%u]",
+        poSession->m_udwNextProcedure, poSession->m_udwExpectProcedure, poSession, poSession->m_udwSeqNo));
+    switch (poSession->m_udwExpectProcedure)
+    {
+    case EN_EXPECT_PROCEDURE__EVENT:
+        OnEventResponse(pstTasksGrp, poSession);
+        break;
+    default:
+        TSE_LOG_ERROR(m_poServLog, ("Invalid expect service type[%u] [seq=%u]", poSession->m_udwExpectProcedure, poSession->m_udwSeqNo));
+        break;
+    }
     //---------req process end---------------
-
 
     // 3> push session wrapper to work queue
     TUINT64 uddwTimeBeg = CTimeUtils::GetCurTimeUs();
@@ -184,5 +194,168 @@ TINT32 CSearchNetIO::GetIp2PortByHandle(LongConnHandle stHandle, TUINT16 *puwPor
     m_pLongConn->GetPeerName(stHandle, &udwHost, &uwPort);
     *puwPort = ntohs(uwPort);
     *ppszIp = inet_ntoa(*(in_addr *)&udwHost);
+    return 0;
+}
+
+TINT32  CSearchNetIO::OnEventResponse(LTasksGroup *pstTasksGrp, SSession *poSession)
+{
+    LTask               *pstTask = 0;
+    TCHAR               *pszIp = 0;
+    TUINT16             uwPort = 0;
+    TUINT32				udwIdx = 0;
+    TINT32				dwRetCode = 0;
+
+    poSession->m_uddwDownRqstTimeEnd = CTimeUtils::GetCurTimeUs();
+
+    poSession->ResetEventInfo();
+    vector<EventRspInfo*>& vecRsp = poSession->m_vecEventRsp;
+    EventRspInfo* pEventRsp = NULL;
+
+    TSE_LOG_DEBUG(m_poServLog, ("event res: ParseEventResponse: [vaildtasksnum=%u] [seq=%u]",
+        pstTasksGrp->m_uValidTasks,
+        poSession->m_udwSeqNo));
+
+    for (udwIdx = 0; udwIdx < pstTasksGrp->m_uValidTasks; udwIdx++)
+    {
+        pstTask = &pstTasksGrp->m_Tasks[udwIdx];
+
+        GetIp2PortByHandle(pstTask->hSession, &uwPort, &pszIp);
+
+        pEventRsp = new EventRspInfo;
+        vecRsp.push_back(pEventRsp);
+
+        TSE_LOG_DEBUG(m_poServLog, ("event res: taskid[%u]: [ip=%s] [port=%u] [send=%u], [recv=%u], [timeout=%u], [donw_busy=%u], [socket_closed=%u], [verify_failed=%u] [recv_data_len=%u] [cost_time=%llu]us [req_type=%u] [seq=%u]",
+            udwIdx, \
+            pszIp, \
+            uwPort, \
+            pstTask->_ucIsSendOK, \
+            pstTask->_ucIsReceiveOK, \
+            pstTask->_ucTimeOutEvent, \
+            pstTask->_ucIsDownstreamBusy, \
+            pstTask->_ucIsSockAlreadyClosed, \
+            pstTask->_ucIsVerifyPackFail, \
+            pstTask->_uReceivedDataLen, \
+            poSession->m_uddwDownRqstTimeEnd - poSession->m_uddwDownRqstTimeBeg, \
+            poSession->m_udwEventRqstType, \
+            poSession->m_udwSeqNo));
+
+        if (0 == pstTask->_ucIsSendOK || 0 == pstTask->_ucIsReceiveOK || 1 == pstTask->_ucTimeOutEvent)
+        {
+            // 加入超时统计
+            if (poSession->m_bEventProxyExist && pstTask->hSession == poSession->m_pstEventProxyNode->m_stDownHandle)
+            {
+                CDownMgr::Instance()->zk_AddTimeOut(poSession->m_pstEventProxyNode);
+            }
+            else if (poSession->m_bThemeEventProxyExist && pstTask->hSession == poSession->m_pstThemeEventProxyNode->m_stDownHandle)
+            {
+                CDownMgr::Instance()->zk_AddTimeOut(poSession->m_pstThemeEventProxyNode);
+            }
+            TSE_LOG_ERROR(m_poServLog, ("event res: [ip=%s] [port=%u] [send=%u], [recv=%u], [timeout=%u], [cost_time=%llu]us [seq=%u]",
+                pszIp, \
+                uwPort, \
+                pstTask->_ucIsSendOK, \
+                pstTask->_ucIsReceiveOK, \
+                pstTask->_ucTimeOutEvent, \
+                poSession->m_uddwDownRqstTimeEnd - poSession->m_uddwDownRqstTimeBeg, \
+                poSession->m_udwSeqNo));
+            if (EN_RET_CODE__SUCCESS == poSession->m_stCommonResInfo.m_dwRetCode)
+            {
+                poSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__TIMEOUT;
+                dwRetCode = -1;
+            }
+            // break;
+        }
+        else
+        {
+            if (pstTask->_uReceivedDataLen > MAX_AWS_RES_DATA_LEN)
+            {
+                TSE_LOG_ERROR(m_poServLog, ("event res: [ip=%s] [port=%u] recv_data_len[%u]>MAX_HS_RES_DATA_LEN [cost_time=%llu]us [seq=%u]",
+                    pszIp, \
+                    uwPort, \
+                    pstTask->_uReceivedDataLen, \
+                    poSession->m_uddwDownRqstTimeEnd - poSession->m_uddwDownRqstTimeBeg, \
+                    poSession->m_udwSeqNo));
+                if (EN_RET_CODE__SUCCESS == poSession->m_stCommonResInfo.m_dwRetCode)
+                {
+                    poSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__PACKAGE_LEN_OVERFLOW;
+                    dwRetCode = -2;
+                }
+                // break;
+            }
+            else
+            {
+                dwRetCode = ParseEventResponse(pstTask->_pReceivedData, pstTask->_uReceivedDataLen, pEventRsp);
+                if (dwRetCode < 0)
+                {
+                    // 加入错误统计
+                    if (poSession->m_bEventProxyExist && pstTask->hSession == poSession->m_pstEventProxyNode->m_stDownHandle)
+                    {
+                        CDownMgr::Instance()->zk_AddError(poSession->m_pstEventProxyNode);
+                    }
+                    else if (poSession->m_bThemeEventProxyExist && pstTask->hSession == poSession->m_pstThemeEventProxyNode->m_stDownHandle)
+                    {
+                        CDownMgr::Instance()->zk_AddError(poSession->m_pstThemeEventProxyNode);
+                    }
+                    TSE_LOG_ERROR(m_poServLog, ("event res: [ip=%s] [port=%u] failed[%d] [seq=%u]",
+                        pszIp, \
+                        uwPort, \
+                        dwRetCode, \
+                        poSession->m_udwSeqNo));
+                    if (EN_RET_CODE__SUCCESS == poSession->m_stCommonResInfo.m_dwRetCode)
+                    {
+                        poSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__PARSE_EVENT_PACKAGE_ERR;
+                        dwRetCode = -3;
+                    }
+                    // break;
+                }
+                else
+                {
+                    TSE_LOG_DEBUG(m_poServLog, ("event res: buf_len[%u] [seq=%u]",
+                        pEventRsp->sRspContent.size(), \
+                        poSession->m_udwSeqNo));
+                }
+            }
+        }
+    }
+
+    poSession->m_udwEventRqstType = 0;
+    return 0;
+}
+
+TINT32 CSearchNetIO::ParseEventResponse(TUCHAR *pszPack, TUINT32 udwPackLen, EventRspInfo* pEventRspInfo)
+{
+    TUCHAR *pszValBuf = NULL;
+    TUINT32 udwValBufLen = 0;
+
+    m_pUnPackTool->UntachPackage();
+    m_pUnPackTool->AttachPackage(pszPack, udwPackLen);
+    if (FALSE == m_pUnPackTool->Unpack())
+    {
+        return -1;
+    }
+    pEventRspInfo->udwServiceType = m_pUnPackTool->GetServiceType();
+    m_pUnPackTool->GetVal(EN_GLOBAL_KEY__RES_CODE, &pEventRspInfo->dwRetCode);
+    m_pUnPackTool->GetVal(EN_GLOBAL_KEY__RES_COST_TIME, &pEventRspInfo->udwCostTime);
+    m_pUnPackTool->GetVal(EN_GLOBAL_KEY__INDEX_NO, &pEventRspInfo->udwIdxNo);
+    m_pUnPackTool->GetVal(EN_KEY_EVENT_PROXY__REQ_TYPE, &pEventRspInfo->udwReqType);
+
+    //2XX的返回码,都是正常的情况
+    if (pEventRspInfo->dwRetCode != 0)
+    {
+        TSE_LOG_ERROR(m_poServLog, ("event res: pAwsRspInfo->dwRetCode=%d\n", pEventRspInfo->dwRetCode));
+        return -2;
+    }
+
+    if (pEventRspInfo->udwServiceType == EN_SERVICE_TYPE_QUERY_EVENT_RSP)
+    {
+        m_pUnPackTool->GetVal(EN_GLOBAL_KEY__RES_BUF, &pszValBuf, &udwValBufLen);
+        pEventRspInfo->sRspContent.resize(udwValBufLen);
+        memcpy((char*)pEventRspInfo->sRspContent.c_str(), pszValBuf, udwValBufLen);
+    }
+    else
+    {
+        return -3;
+    }
+
     return 0;
 }

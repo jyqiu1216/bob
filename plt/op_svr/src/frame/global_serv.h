@@ -10,7 +10,7 @@
 #include <pthread.h>
 #include "notic_process.h"
 #include "delay_msg_process.h"
-#include "zk_util.h"
+#include "zkutil/zk_util.h"
 
 /*
  * 初始化和管理全局资源

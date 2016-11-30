@@ -2,6 +2,8 @@
 #define _QUERY_NET_IO_H_
 
 #include "std_header.h"
+#include "client_netio.pb.h"
+using namespace client_netio_protocol;
 
 class CQueryNetIO : public ITasksGroupCallBack
 {
@@ -36,7 +38,7 @@ public:
     // 长连接对象
     ILongConn               *m_pLongConn;
     // 日志对象
-    CTseLogger              *m_poServLog;
+    CTseLogger              *m_pLog;
     // session队列
     CTaskQueue              *m_poTaskQueue;
     // 打包/解包工具
@@ -46,6 +48,18 @@ public:
     TINT32                  m_hListenSock;
     // 序列号
     TUINT32                 m_udwSeqno;
+    // 模式
+    TBOOL                   m_bHttpOp;
+
+    TUINT32                 m_udwContentType;
+
+private:
+    HRESULT OnClientCommandRequest_Binary(LongConnHandle stHandle, const TUCHAR *pszData, TUINT32 udwDataLen);
+    ClientRequest           *m_pobjClientReq;
+
+private:
+    HRESULT OnClientCommandRequest_Http(LongConnHandle stHandle, const TUCHAR *pszData, TUINT32 udwDataLen);
+
 };
 
 #endif

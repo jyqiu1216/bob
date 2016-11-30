@@ -43,6 +43,13 @@ public:
     TINT32                  m_hListenSock;
     // 序列号
     TUINT32                 m_udwSeqno;
+
+private:
+    // 处理响应消息
+    TINT32 OnEventResponse(LTasksGroup *pstTasksGrp, SSession *poSession);
+
+    TINT32 ParseEventResponse(TUCHAR *pszPack, TUINT32 udwPackLen, EventRspInfo* pAwsRspInfo);
+
 };
 
 #endif
