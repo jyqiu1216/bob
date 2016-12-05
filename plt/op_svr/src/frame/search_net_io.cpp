@@ -2,9 +2,9 @@
 #include "conf_base.h"
 #include "global_serv.h"
 
-TINT32 CSearchNetIO::Init(CTseLogger *pLog, CTaskQueue *poTaskQueue)
+TINT32 CSearchNetIO::Init(CConf *pobjConf, CTseLogger *pLog, CTaskQueue *poTaskQueue)
 {
-    if (NULL == pLog || NULL == poTaskQueue)
+    if (NULL == pobjConf || NULL == pLog || NULL == poTaskQueue)
     {
         return -1;
     }
@@ -12,6 +12,7 @@ TINT32 CSearchNetIO::Init(CTseLogger *pLog, CTaskQueue *poTaskQueue)
     TBOOL bRet = -1;
 
     // 1. 设置配置对象,日志对象和任务队列
+    m_poConf = pobjConf;
     m_poServLog = pLog;
     m_poTaskQueue = poTaskQueue;
 
@@ -24,11 +25,11 @@ TINT32 CSearchNetIO::Init(CTseLogger *pLog, CTaskQueue *poTaskQueue)
     }
 
     // 3. 侦听端口
-
-    m_hListenSock = CreateListenSocket(CGlobalServ::m_poConf->m_szModuleIp, CConfBase::GetInt("reg_port"));
+    TSE_LOG_ERROR(m_poServLog, ("listen socket: ip=%s port=%d", CGlobalServ::m_poConf->m_szModuleIp, CConfBase::GetInt("reg_port")));
+    m_hListenSock = CreateListenSocket(CGlobalServ::m_poConf->m_szModuleIp, CConfBase::GetInt("search_port"));
     if (m_hListenSock < 0)
     {
-        TSE_LOG_ERROR(m_poServLog, ("Create listen socket fail"));
+        TSE_LOG_ERROR(m_poServLog, ("Create listen socket fail ret=%d", m_hListenSock));
         return -3;
     }
 
@@ -147,7 +148,7 @@ SOCKET CSearchNetIO::CreateListenSocket(TCHAR *pszListenHost, TUINT16 uwPort)
     if (setsockopt(lSocket, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(option)) < 0)
     {
         close(lSocket);
-        return -1;
+        return -2;
     }
 
     // 2> 绑定端口
@@ -161,7 +162,7 @@ SOCKET CSearchNetIO::CreateListenSocket(TCHAR *pszListenHost, TUINT16 uwPort)
     if (rv < 0)
     {
         close(lSocket);
-        return -1;
+        return -3;
     }
 
     // 3> 监听
@@ -170,7 +171,7 @@ SOCKET CSearchNetIO::CreateListenSocket(TCHAR *pszListenHost, TUINT16 uwPort)
     if (rv < 0)
     {
         close(lSocket);
-        return -1;
+        return -4;
     }
 
     return lSocket;

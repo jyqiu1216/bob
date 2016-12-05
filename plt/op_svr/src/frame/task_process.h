@@ -60,7 +60,6 @@ public:
 
     // 日志对象
     CTseLogger          *m_poServLog;
-    CTseLogger          *m_poClientReqLog;
     CTseLogger			*m_poDayLog;
 
     // 任务队列

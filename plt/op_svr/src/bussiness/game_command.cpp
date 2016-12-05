@@ -6,10 +6,9 @@ CClientCmd *CClientCmd::m_poClientCmdInstance = NULL;
 // todo: 命令字输出有待优化
 static struct SCmdInfo stszClientReqCommand[EN_CLIENT_REQ_COMMAND__END + 1] =
 {
-    { EN_CLIENT_REQ_COMMAND__UNKNOW,            { "unknow", EN_UNKNOW_PROCEDURE, EN_UNKNOW_CMD, NULL, NULL } },
-
-    { EN_CLIENT_REQ_COMMAND__ALL_EVENT_GET,     { "all_event_info_get", EN_NORMAL, EN_EVENT, CProcessEvent::ProcessCmd_AllEventGet, NULL}},
-    { EN_CLIENT_REQ_COMMAND__END,               { "cmdend", EN_UNKNOW_PROCEDURE, EN_UNKNOW_CMD, NULL, NULL } },
+    { EN_CLIENT_REQ_COMMAND__UNKNOW,            {"unknow", EN_UNKNOW_PROCEDURE, EN_UNKNOW_CMD, NULL, NULL}},
+    { EN_CLIENT_REQ_COMMAND__ALL_EVENT_GET,     {"all_event_get", EN_NORMAL, EN_EVENT, CProcessEvent::ProcessCmd_AllEventGet, NULL}},
+    { EN_CLIENT_REQ_COMMAND__END,               {"cmdend", EN_UNKNOW_PROCEDURE, EN_UNKNOW_CMD, NULL, NULL}},
 };
 
 CClientCmd::CClientCmd()

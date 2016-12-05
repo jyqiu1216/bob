@@ -20,6 +20,7 @@ class CGlobalServ
 public:
     static int Init();
     static int Uninit();
+    static int InitAwsTable(const TCHAR *pszProjectPrefix);
 
     static int Start();
     static int StopNet();

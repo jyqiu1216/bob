@@ -81,7 +81,6 @@ TINT32 CProcessEvent::ProcessCmd_AllEventGet(SSession *pstSession, TBOOL& bNeedR
             }
             TSE_LOG_DEBUG(pstSession->m_poServLog, ("ProcessCmd_AllEventInfoGet: [json_value=%s] [seq=%u]", pstSession->m_vecEventRsp[udwIdx]->sRspContent.c_str(), pstSession->m_udwSeqNo));
         }
-        TSE_LOG_DEBUG(pstSession->m_poServLog, ("ProcessCmd_AllEventInfoGet: pase event info [%s][seq=%u]", pstSession->m_vecEventRsp[0]->sRspContent.c_str(), pstSession->m_udwSeqNo));
     }
     pstSession->m_stCommonResInfo.m_ucJsonType = EN_JSON_TYPE_EVENT;
     pstSession->m_udwCommandStep = EN_COMMAND_STEP__END;

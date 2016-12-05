@@ -8,7 +8,7 @@ class CSearchNetIO : public ITasksGroupCallBack
 {
 public:
     // 初始化
-    TINT32 Init(CTseLogger *pLog, CTaskQueue *poTaskQueue);
+    TINT32 Init(CConf *pobjConf, CTseLogger *pLog, CTaskQueue *poTaskQueue);
 
     // 网络IO线程驱动函数
     static TVOID * RoutineNetIO(void *pParam);
@@ -43,13 +43,13 @@ public:
     TINT32                  m_hListenSock;
     // 序列号
     TUINT32                 m_udwSeqno;
+    // 配置
+    CConf					*m_poConf;
 
 private:
     // 处理响应消息
     TINT32 OnEventResponse(LTasksGroup *pstTasksGrp, SSession *poSession);
-
     TINT32 ParseEventResponse(TUCHAR *pszPack, TUINT32 udwPackLen, EventRspInfo* pAwsRspInfo);
-
 };
 
 #endif

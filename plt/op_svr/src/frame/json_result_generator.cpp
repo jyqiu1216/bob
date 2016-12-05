@@ -12,11 +12,11 @@ CJsonResultGenerator::CJsonResultGenerator()
 {
     m_jsonResult.clear();
 
-    m_szDataBuffer = new TCHAR[MAX_NETIO_PACKAGE_BUF_LEN];
-    m_szCompressBuffer = new TCHAR[MAX_NETIO_PACKAGE_BUF_LEN];
-    m_szEncodeBuffer = new TCHAR[MAX_NETIO_PACKAGE_BUF_LEN];
-    m_szResultBuffer = new TCHAR[MAX_NETIO_PACKAGE_BUF_LEN];
-    m_szMD5Buffer = new TCHAR[MAX_NETIO_PACKAGE_BUF_LEN];
+    m_szDataBuffer = new TCHAR[MAX_NETIO_PACKAGE_BUF_LEN_UL];
+    m_szCompressBuffer = new TCHAR[MAX_NETIO_PACKAGE_BUF_LEN_UL];
+    m_szEncodeBuffer = new TCHAR[MAX_NETIO_PACKAGE_BUF_LEN_UL];
+    m_szResultBuffer = new TCHAR[MAX_NETIO_PACKAGE_BUF_LEN_UL];
+    m_szMD5Buffer = new TCHAR[MAX_NETIO_PACKAGE_BUF_LEN_UL];
 
     m_bNeedCompress = FALSE;
 
@@ -72,19 +72,40 @@ TUINT32 CJsonResultGenerator::GetResultJsonLength() const
 
 TVOID CJsonResultGenerator::GenResult_Pb( SSession* pstSession, TBOOL bNeedContent ) //TODO
 {
+    const TCHAR *pszData = NULL;
+    TUINT32 udwDataLen = 0;
+    TINT32 dwTableOutputType = 0;
+    TINT64 ddwSeq = 0;
+    TINT32 dwSeqCheckType = 0;
+    COutputConf *poOutputConf = COutputConf::GetInstace();
+
     m_objPbResponse.Clear();
     m_jsonResult.clear();
-    m_apJsonGen[pstSession->m_stCommonResInfo.m_ucJsonType]->GenDataJson(pstSession, m_jsonResult);
+    //m_apJsonGen[pstSession->m_stCommonResInfo.m_ucJsonType]->GenDataJson(pstSession, m_jsonResult);
+    CBaseJson* m_EventJsonGen = new CEventJson();
+    m_EventJsonGen->GenDataJson(pstSession, m_jsonResult);
     Json::Value::Members jsonDataKeys = m_jsonResult.getMemberNames();
     for (Json::Value::Members::iterator it = jsonDataKeys.begin(); it != jsonDataKeys.end(); ++it)
     {
+        pszData = NULL;
+        pszData = m_jSeri.serializeToBuffer(m_jsonResult[*it], udwDataLen);
+
+        dwTableOutputType = poOutputConf->GetTableOutputType((*it).c_str(), pstSession->m_dwClientResType);
+        dwSeqCheckType = poOutputConf->GetTableSeqCheckType((*it).c_str());
+        TableDomData *pTblData = m_objPbResponse.add_table_dom_data();
+        pTblData->set_table_name(*it);
+        pTblData->set_updt_type(dwTableOutputType);
+        pTblData->set_seq_type(dwSeqCheckType);
+        pTblData->set_seq(0);
+        pTblData->set_dom_type(EN_DOMDATA_TYPE__BJSON);
+        pTblData->set_dom_data(pszData, udwDataLen);
+
         //for debug
         m_jsonWriter.omitEndingLineFeed();
         string strData = m_jsonWriter.write(m_jsonResult[*it]);
-        TSE_LOG_DEBUG(CGlobalServ::m_poServLog, ("GenResult_Pb[tbl=%s]: %s [test_uid=%ld] [seq=%u]",
-            (*it).c_str(), strData.c_str(), pstSession->m_stReqParam.m_ddwUserId, pstSession->m_udwSeqNo));
+        TSE_LOG_DEBUG(CGlobalServ::m_poServLog, ("GenResult_Pb[tbl=%s]: %s [test_uid=%u] [seq=%u]",
+            (*it).c_str(), strData.c_str(), pstSession->m_stReqParam.m_udwUserId, pstSession->m_udwSeqNo));
     }
-
     // header
     m_objPbResponse.set_service_type(EN_SERVICE_TYPE__CLIENT__COMMAND_RSP);
     m_objPbResponse.set_ret_code(pstSession->m_stCommonResInfo.m_dwRetCode);
@@ -93,16 +114,16 @@ TVOID CJsonResultGenerator::GenResult_Pb( SSession* pstSession, TBOOL bNeedConte
     m_objPbResponse.set_svr_seq(pstSession->m_udwSeqNo);
     m_objPbResponse.set_game_time(CTimeUtils::GetUnixTime());
     m_objPbResponse.set_cost_time(pstSession->m_stCommonResInfo.m_uddwCostTime);
-    m_objPbResponse.set_uid(pstSession->m_stReqParam.m_ddwUserId);
-    m_objPbResponse.set_sid(pstSession->m_stReqParam.m_dwSvrId);
+    m_objPbResponse.set_uid(pstSession->m_stReqParam.m_udwUserId);
+    m_objPbResponse.set_sid(pstSession->m_stReqParam.m_udwSvrId);
 
     // serialize
     pstSession->m_dwFinalPackLength = m_objPbResponse.ByteSize();
-    assert(pstSession->m_dwFinalPackLength <= MAX_NETIO_PACKAGE_BUF_LEN);
+    assert(pstSession->m_dwFinalPackLength <= MAX_NETIO_PACKAGE_BUF_LEN_UL);
     m_objPbResponse.SerializeToArray(&pstSession->m_szClientRspBuf[0], pstSession->m_dwFinalPackLength);
 
-    TSE_LOG_DEBUG(CGlobalServ::m_poServLog, ("GenResult_Pb: total_byte_size=%d [test_uid=%ld][s_type=%d][seq=%u]", 
-        pstSession->m_dwFinalPackLength, pstSession->m_stReqParam.m_ddwUserId, EN_SERVICE_TYPE__CLIENT__COMMAND_RSP, pstSession->m_udwSeqNo));
+    TSE_LOG_DEBUG(CGlobalServ::m_poServLog, ("GenResult_Pb: total_byte_size=%d [test_uid=%u][s_type=%d][seq=%u]", 
+        pstSession->m_dwFinalPackLength, pstSession->m_stReqParam.m_udwUserId, EN_SERVICE_TYPE__CLIENT__COMMAND_RSP, pstSession->m_udwSeqNo));
     return;
 }
 
@@ -133,4 +154,11 @@ TVOID CJsonResultGenerator::GenEmptyTableFroClientUpdt_Pb( const TCHAR *pszTable
     m_jsonWriter.omitEndingLineFeed();
     string strData = m_jsonWriter.write(jTmpJson[pszTableName]);
     TSE_LOG_DEBUG(CGlobalServ::m_poServLog, ("GenPushDataResult_Pb[tbl=%s][type=%d]: %s", pszTableName, EN_CONTENT_UPDATE_TYPE__ITEM_INC, strData.c_str()));
+}
+
+TINT32 CJsonResultGenerator::CompressZip(TUINT32 udwRawDataLen, TCHAR* szRawData)
+{
+    unsigned long udwCompressBufLen = MAX_NETIO_PACKAGE_BUF_LEN_UL;
+    compress((Bytef*)m_szEncodeBuffer, &udwCompressBufLen, (Bytef*)szRawData, udwRawDataLen);//zip
+    return udwCompressBufLen;
 }

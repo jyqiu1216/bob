@@ -126,7 +126,7 @@ TINT32 CTaskProcess::Init(CConf *poConf, ILongConn *poSearchLongConn, ILongConn 
     m_poQueryLongConn = poQueryLongConn;
     m_pTaskQueue = pTaskQueue;
     m_poServLog = poServLog;
-    m_poClientReqLog = poDayLog;
+    m_poDayLog = poDayLog;
 
     for (idx = 0; idx < MAX_LOCAL_HS_TASK_NUM; idx++)
     {
@@ -137,7 +137,7 @@ TINT32 CTaskProcess::Init(CConf *poConf, ILongConn *poSearchLongConn, ILongConn 
     m_pUnPackTool->Init();
 
     m_stHttpParam.Reset();
-    m_pTmpBuf = new TCHAR[MAX_NETIO_PACKAGE_BUF_LEN];
+    m_pTmpBuf = new TCHAR[MAX_NETIO_PACKAGE_BUF_LEN_UL];
 
     return 0;
 }
@@ -197,20 +197,57 @@ TINT32 CTaskProcess::WorkRoutine()
 
 TINT32 CTaskProcess::ProcessClientRequest(SSession *pstSession)
 {
-    TSE_LOG_INFO(m_poServLog, ("Main_flow: parse client req [seq=%u]", \
+    TSE_LOG_INFO(m_poServLog, ("Main_flow: parse client req [seq=%u]",
         pstSession->m_udwSeqNo));
-
     TINT32 dwRetVal = 0;
     TINT32 dwDecryptDataLen = 0;
     char *pRealUrl = NULL;
-    char *pDeFlag = NULL;
+    TCHAR *pDeFlag = NULL;
 
-    TSE_LOG_DEBUG(m_poServLog, ("Main_flow: client_req_len[%u] url[%s] [seq=%u]", \
-        strlen((char*)pstSession->m_szClientReqBuf), \
-        pstSession->m_szClientReqBuf, \
+    pstSession->m_udwRequestType = EN_PROCEDURE__INIT;
+
+    TSE_LOG_INFO(m_poServLog, ("Main_flow: client_req_len[%u] url[%s] [seq=%u]",
+        strlen((char*)pstSession->m_szClientReqBuf),
+        pstSession->m_szClientReqBuf,
         pstSession->m_udwSeqNo));
 
-    //1.获取url
+    // 1. 获取url
+    if (pstSession->m_dwClientReqMode == EN_CLIENT_REQ_MODE__HTTP)
+    {
+        dwRetVal = CHuWork::GetRequestUrl((char*)pstSession->m_szClientReqBuf, pstSession->m_stReqParam.m_szReqUrl);
+        if (0 > dwRetVal)
+        {
+            TSE_LOG_ERROR(m_poServLog, ("Main_flow: GetRequestUrl fail[%d] url_len[%u] url[%s] [seq=%u]",
+                dwRetVal, strlen((char*)pstSession->m_szClientReqBuf),
+                pstSession->m_szClientReqBuf, pstSession->m_udwSeqNo));
+            pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__REQ_PARAM_ERROR;
+            goto CLIENT_REQUEST_ERR_RET;
+        }
+    }
+    else
+    {
+        strcpy(pstSession->m_stReqParam.m_szReqUrl, (char*)pstSession->m_szClientReqBuf);
+    }
+
+
+    TSE_LOG_INFO(m_poServLog, ("Main_flow: client_req_len[%u] true_url[%s] [seq=%u]",
+        strlen((char*)pstSession->m_stReqParam.m_szReqUrl),
+        pstSession->m_stReqParam.m_szReqUrl,
+        pstSession->m_udwSeqNo));
+
+    //--------------URL PreProcess------------------------------------------------------------------
+    // get version
+    pRealUrl = strstr(pstSession->m_stReqParam.m_szReqUrl, "vs=");
+    if (pRealUrl == NULL)
+    {
+        pstSession->m_stReqParam.m_udwVersion = 1.0;
+    }
+    else
+    {
+        pstSession->m_stReqParam.m_udwVersion = atof(pRealUrl + 3);
+    }
+    
+    // 1.1 获取url，并进行解密
     pDeFlag = strstr(pstSession->m_stReqParam.m_szReqUrl, "op_en_flag=");
     if (pstSession->m_dwClientReqEnType && pDeFlag == NULL)
     {
@@ -247,22 +284,96 @@ TINT32 CTaskProcess::ProcessClientRequest(SSession *pstSession)
             }
         }
     }
+    
     TSE_LOG_INFO(m_poServLog, ("Main_flow: recv req_url[%s] [seq=%u]",
         pstSession->m_stReqParam.m_szReqUrl,
         pstSession->m_udwSeqNo));
 
-    //2.获取请求参数
+    // 2. 获取请求参数
+    // "CHuWork::GetRequestParam"保证了命令字属于定义的命令字
     dwRetVal = CHuWork::GetRequestParam(pstSession, m_poServLog, &m_stHttpParam);
     if (0 > dwRetVal)
     {
-        TSE_LOG_ERROR(m_poServLog, ("Main_flow: GetRequestParam fail [%d] [seq=%u]", \
-            dwRetVal, \
-            pstSession->m_udwSeqNo));
+        TSE_LOG_ERROR(m_poServLog, ("Main_flow: GetRequestParam fail [%d] [seq=%u]",
+            dwRetVal, pstSession->m_udwSeqNo));
         pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__REQ_PARAM_ERROR;
         goto CLIENT_REQUEST_ERR_RET;
     }
+    else
+    {
+        if (pstSession->m_stReqParam.m_uddwDeviceId == 0)
+        {
+            TSE_LOG_ERROR(m_poServLog, ("Main_flow: GetRequestParam did is zero [seq=%u]",
+                pstSession->m_udwSeqNo));
+            pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__REQ_PARAM_ERROR;
+            goto CLIENT_REQUEST_ERR_RET;
+        }
+        /*
+        // 获取客户端时间
+        if (pstSession->m_dwClientReqEnType)
+        {
+            TBOOL bHacker = FALSE;
+            TUINT32 udwCurTime = CTimeUtils::GetUnixTime();
+            const TCHAR *pszTime = strstr(pstSession->m_stReqParam.m_szReqUrl, "time=");
+            if (pszTime)
+            {
+                pstSession->m_stReqParam.m_udwInReqTime = strtoul(pszTime + 5, NULL, 10);
+                if (pstSession->m_stReqParam.m_udwInReqTime < udwCurTime - 10 * 60 || pstSession->m_stReqParam.m_udwInReqTime > udwCurTime + 10 * 60)
+                {
+                    switch (pstSession->m_stReqParam.m_udwCommandID)
+                    {
+                        //case EN_CLIENT_REQ_COMMAND__MARCH_CAMP:
+                        bHacker = TRUE;
+                        break;
+                    default:
+                        break;
+                    }
+                }
+            }
+            else
+            {
+                if (strstr(pstSession->m_stReqParam.m_szReqUrl, "did=monitor") != NULL)
+                {
+                    bHacker = FALSE;
+                }
+                else
+                {
+                    bHacker = TRUE;
+                }
+            }
 
-    //3.根据command进行各流程处理
+            if (bHacker == TRUE)
+            {
+                pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__HACKER;
+                TSE_LOG_ERROR(m_poServLog, ("Main_flow: CheckClientReqTime error req_time[%u] cur_time[%u]! [seq=%u]",
+                    pstSession->m_stReqParam.m_udwInReqTime,
+                    udwCurTime, pstSession->m_udwSeqNo));
+                goto CLIENT_REQUEST_ERR_RET;
+            }
+        }
+        else
+        {
+            const TCHAR *pszTime = strstr(pstSession->m_stReqParam.m_szReqUrl, "time=");
+            if (pszTime)
+            {
+                pstSession->m_stReqParam.m_udwInReqTime = strtoul(pszTime + 5, NULL, 10);
+            }
+        }
+        */
+    }
+
+    pstSession->m_udwCommand = pstSession->m_stReqParam.m_udwCommandID;
+
+    TSE_LOG_DEBUG(m_poServLog, ("Main_flow: uid[%u] did[%Lu] platform[%s] svr[%u] command[%d] reqno[%u] [seq=%u]",
+        pstSession->m_stReqParam.m_udwUserId,
+        pstSession->m_stReqParam.m_uddwDeviceId,
+        pstSession->m_stReqParam.m_szPlatForm,
+        pstSession->m_stReqParam.m_udwSvrId,
+        pstSession->m_stReqParam.m_udwCommandID,
+        pstSession->m_stReqParam.m_udwSeqNo,
+        pstSession->m_udwSeqNo));
+
+    // 4. 根据command进行各流程处理
     dwRetVal = ProcessCommand(pstSession);
     if (dwRetVal < 0)
     {
@@ -273,7 +384,7 @@ TINT32 CTaskProcess::ProcessClientRequest(SSession *pstSession)
 
 CLIENT_REQUEST_ERR_RET:
     SendBackResult(pstSession);
-    CSessionMgr::Instance()->ReleaseSession(pstSession);
+    CGlobalServ::m_poSessionMgr->ReleaseSession(pstSession);
     return -1;
 }
 
@@ -437,7 +548,7 @@ TINT32 CTaskProcess::SendBackResult(SSession *pstSession)
     // 返回结果
     if (pstSession->m_dwClientReqMode == EN_CLIENT_REQ_MODE__HTTP)
     {
-        //SendBackResult_Http(pstSession);
+        SendBackResult_Http(pstSession);
     }
     else
     {
@@ -457,6 +568,25 @@ TINT32 CTaskProcess::SendBackResult(SSession *pstSession)
     //m_poQueryLongConn->RemoveLongConnSession(pstSession->m_stClientHandle);
 
     return 0;
+}
+
+TINT32 CTaskProcess::SendBackResult_Http(SSession *pstSession)
+{
+    TINT32 dwClientSocket = 0;
+
+    // 1.获取socket
+    dwClientSocket = m_poQueryLongConn->GetSockHandle(pstSession->m_stClientHandle);
+    if (dwClientSocket == INVALID_SOCKET)
+    {
+        TSE_LOG_DEBUG(m_poServLog, ("INVALID_SOCKET in send back message! [seq=%u]", pstSession->m_udwSeqNo));
+        return 0;
+    }
+
+    // 2.发送结果
+    tse_socket_writeFull(dwClientSocket, pstSession->m_szClientRspBuf, pstSession->m_dwFinalPackLength);
+
+    // 3. 发送完结果后，关闭连接
+    m_poQueryLongConn->RemoveLongConnSession(pstSession->m_stClientHandle);
 
     return 0;
 }
@@ -476,12 +606,33 @@ TINT32 CTaskProcess::SendBackResult_Binary(SSession *pstSession)
     pobjPack->SetSeq(pstSession->m_udwPackSeq);
     pobjPack->SetKey(EN_GLOBAL_KEY__RES_CODE, pstSession->m_stCommonResInfo.m_dwRetCode);
     pobjPack->SetKey(EN_GLOBAL_KEY__RES_COST_TIME, pstSession->m_stCommonResInfo.m_uddwCostTime);
-    pobjPack->SetKey(EN_GLOBAL_KEY__TARGET_UID, pstSession->m_stReqParam.m_ddwUserId);
+    pobjPack->SetKey(EN_GLOBAL_KEY__TARGET_UID, pstSession->m_stReqParam.m_udwUserId);
+    //小于1k的包，不做压缩
+    if (pstSession->m_dwFinalPackLength < 600)
+    {
+        ucCompressFlag = 0;
+    }
+    else
+    {
+        ucCompressFlag = 1;
+    }
+
     pobjPack->SetKey(EN_GLOBAL_KEY__RES_BUF_COMPRESS_FLAG, ucCompressFlag);
-    pobjPack->SetKey(EN_GLOBAL_KEY__RES_BUF, (TUCHAR*)&pstSession->m_pTmpBuf[0], pstSession->m_dwFinalPackLength);
+
+    if (ucCompressFlag)
+    {
+        udwCompressDataLen = m_oJsonResultGenerator.CompressZip(pstSession->m_dwFinalPackLength, &pstSession->m_szClientRspBuf[0]);
+        pobjPack->SetKey(EN_GLOBAL_KEY__RES_BUF, (TUCHAR*)m_oJsonResultGenerator.m_szEncodeBuffer, udwCompressDataLen);
+    }
+    else
+    {
+        pobjPack->SetKey(EN_GLOBAL_KEY__RES_BUF, (TUCHAR*)&pstSession->m_szClientRspBuf[0], pstSession->m_dwFinalPackLength);
+    }
+
+    //pobjPack->SetKey(EN_GLOBAL_KEY__RES_BUF_COMPRESS_FLAG, ucCompressFlag);
+    //pobjPack->SetKey(EN_GLOBAL_KEY__RES_BUF, (TUCHAR*)&pstSession->m_szClientRspBuf[0], pstSession->m_dwFinalPackLength);
 
     pobjPack->GetPackage(&pucPackage, &udwPackageLen);
-
     TSE_LOG_INFO(m_poServLog, ("SendBackResult_Binary: send package_len=%u [seq=%u]", udwPackageLen, pstSession->m_udwSeqNo));
 
     // 2. send back
@@ -515,10 +666,10 @@ TVOID CTaskProcess::ResetSessionTmpParam(SSession *pstSession)
 TVOID CTaskProcess::PrintLog(SSession *pstSession)
 {
     TUINT64 uddwCostTime = pstSession->m_stCommonResInfo.m_uddwCostTime;
-    TSE_LOG_HOUR(m_poDayLog, ("req_url[%s],ret[%d],cost[%llu],svr[%u],ip[%s],uid[%ld],[seq=%u]",
+    TSE_LOG_HOUR(m_poDayLog, ("req_url[%s],ret[%d],cost[%llu],svr[%u],ip[%s],uid[%u],[seq=%u]",
         pstSession->m_stReqParam.m_szReqUrl, \
         pstSession->m_stCommonResInfo.m_dwRetCode, uddwCostTime, \
-        pstSession->m_stReqParam.m_dwSvrId, pstSession->m_stReqParam.m_szIp, \
-        pstSession->m_stReqParam.m_ddwUserId,
+        pstSession->m_stReqParam.m_udwSvrId, pstSession->m_stReqParam.m_szIp, \
+        pstSession->m_stReqParam.m_udwUserId,
         pstSession->m_udwSeqNo));
 }

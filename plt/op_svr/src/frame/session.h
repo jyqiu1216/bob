@@ -86,54 +86,133 @@ struct SCommonResInfo
 
 struct SReqParam
 {
-    TINT32              m_dwOpEncryptFlag;
-
     // req url
-    TCHAR               m_szReqUrl[MAX_HTTP_REQ_LEN];
+    TCHAR				m_szReqUrl[MAX_HTTP_REQ_LEN];
 
     // common param
-    TCHAR               m_szIp[MAX_IP_LEN];
-    TUINT64             m_uddwDeviceId;                     // device id
-    TCHAR				m_szDevice[MAX_DEVICE_ID_LEN];
-    TINT32              m_dwSvrId;                         // svr id
-    TINT64              m_ddwUserId;                        // user global id
-    TUINT32             m_udwSeqNo;
-    TCHAR               m_szPlatForm[DEFAULT_NAME_STR_LEN];
-    TUINT32				m_udwLang;		                    //用户的语言
+    TUINT8              m_ucResType;                        // res type
+    TCHAR				m_szIp[MAX_IP_LEN];
+    TUINT64				m_uddwDeviceId;						// device id
+    TUINT32				m_udwSvrId;							// svr id
+    TUINT32				m_udwUserId;						// user global id
+    TUINT32				m_udwCityId;						// city id;
+    TINT64             m_ddwReportId;                      //客户端拉取过的最大的report id
+    TINT64             m_ddwMailId;                         //客户端拉取过的最大的mail id
+    TUINT32				m_udwAllianceId;					// alliance id;
+    TUINT8              m_ucAlliancePos;                    // alliance pos;
+    TUINT32				m_udwSeqNo;
     TFLOAT32			m_udwVersion;
+    TUINT8				m_ucLoginStatus;					//登录时置1，登录后使用是0;
+    TUINT32				m_udwLang;		                    //用户的语言
+    TUINT32				m_udwPage;
+    TUINT32				m_udwPerpage;
+    TCHAR				m_szGameCenterID[MAX_GAME_CENTER_ID_LEN];
+    TUINT64				m_uddwGId;
+    TCHAR				m_szDevice[MAX_DEVICE_ID_LEN];
+    TCHAR               m_szIdfa[MAX_DEVICE_ID_LEN];
+    TCHAR               m_szIosVer[MAX_OS_VER_LEN];
+    TCHAR               m_szPid[MAX_PRODUCT_ID_LEN];
+    TCHAR               m_szVs[MAX_PRODUCT_ID_LEN];
+    TCHAR               m_szSy[MAX_PRODUCT_ID_LEN];
+    TCHAR               m_szPlatForm[MAX_PRODUCT_ID_LEN];
+    TINT64              m_ddwReqCost;                       // 客户端的处理时间
 
 
-    TCHAR               m_szCommand[DEFAULT_NAME_STR_LEN];
-    TUINT32             m_udwCommandID;
-    TCHAR               m_szKey[MAX_REQ_PARAM_KEY_NUM][DEFAULT_PARAM_STR_LEN];
-    TCHAR               m_szExKey[MAX_REQ_PARAM_KEY_NUM][DEFAULT_PARAM_STR_LEN];
+    // 创建用户所属城市时使用
+    TUINT8				m_ucProvince;
+    TUINT32				m_udwSkip;
+    TUINT8				m_ucIsNpc;
+    TUINT8              m_ucIsSandBox;
+    TBOOL               m_bNeedLoginCheck; //是否账号验证，如果不需要，只要uid正确即可，一般用于op cmd
 
+    TCHAR				m_szCommand[DEFAULT_NAME_STR_LEN];
+    TUINT32				m_udwCommandID;
+    TCHAR				m_szKey[MAX_REQ_PARAM_KEY_NUM][DEFAULT_PARAM_STR_LEN];
+    TCHAR				m_szExKey[MAX_REQ_PARAM_KEY_NUM][DEFAULT_PARAM_STR_LEN];
 
+    TUINT32				m_udwLoginType;
+    TUINT32             m_udwLoginSuccType;
 
+    TUINT8				m_ucIsNewPlayer;
+    TUINT8				m_ucIsNewSvrPlayer;
+    TUINT8				m_ucIsGuideFinish;
+
+    //wave@20140522
+    TUINT32             m_udwInReqTime; //客户端带过来的时间参数
+
+    //charles@20150709
+    TBOOL				m_bLotteryRefresh;
+
+    string m_szPurchaseToken;
+    string m_szPackageName;
+    string m_szItemId;
+    string m_szPurchaseUid;
 
     void Reset()
     {
-        m_dwOpEncryptFlag = 0;
         m_szReqUrl[0] = 0;
+
+        m_ucResType = 0;
 
         m_szIp[0] = 0;
         m_uddwDeviceId = 0;
-        m_dwSvrId = (TUINT32)-1;
-        m_ddwUserId = 0;
+        m_udwSvrId = (TUINT32)-1;
+        m_udwUserId = 0;
+        m_udwCityId = 0;
+
+        m_ddwReportId = 0;
+        m_ddwMailId = 0;
+
+        m_udwAllianceId = 0;
+        m_ucAlliancePos = 0;
+
+        m_szGameCenterID[0] = 0;
+        m_uddwGId = 0;
+        m_szDevice[0] = 0;
+        m_szIdfa[0] = '\0';
+        m_szSy[0] = '\0';
+        m_szVs[0] = '\0';
+        m_szPlatForm[0] = '\0';
+        m_ddwReqCost = 0;
+
+        m_ucProvince = 0;
+        m_udwSkip = 0;
+        m_ucIsNpc = 0;
+        m_ucIsSandBox = 0;
+        m_bNeedLoginCheck = TRUE;
 
         m_udwSeqNo = 0;
-        m_szPlatForm[0] = '\0';
+        m_udwVersion = 1.0;
+        m_ucLoginStatus = EN_LOGIN_STATUS__USING;
         m_udwLang = 0;
+        m_udwPage = 1;
+        m_udwPerpage = DEFAULT_PERPAGE_NUM;
 
         m_szCommand[0] = 0;
         m_udwCommandID = 0;
-        m_udwVersion = 1.0;
-
         for (TUINT32 udwIdx = 0; udwIdx < MAX_REQ_PARAM_KEY_NUM; udwIdx++)
         {
-            m_szKey[udwIdx][0] = '\0';
-            m_szExKey[udwIdx][0] = '\0';
+            m_szKey[udwIdx][0] = 0;
+            m_szExKey[udwIdx][0] = 0;
         }
+
+        m_udwLoginType = EN_LOGIN_TYPE__GID;
+        m_udwLoginSuccType = EN_LOGIN_TYPE__GID;
+
+        m_ucIsNewPlayer = EN_NEW_PLAYER__NORMAL;
+        m_ucIsNewSvrPlayer = 0;
+        m_ucIsGuideFinish = 0;
+
+        m_udwInReqTime = 0;
+        m_szIosVer[0] = 0;
+        m_szPid[0] = 0;
+
+        m_bLotteryRefresh = FALSE;
+
+        m_szPurchaseToken.clear();
+        m_szPurchaseUid.clear();
+        m_szPackageName.clear();
+        m_szItemId.clear();
     }
 };
 
@@ -166,10 +245,8 @@ struct SSession
     /********************************************************************************************
                         当前使用的下游节点
                         *********************************************************************************************/
-    TUINT32 m_udwContentType;
+    TUINT32             m_udwContentType;
 
-    SDownNode            *m_pstAwsProxyNode;
-    TBOOL               m_bAwsProxyNodeExist;
     SDownNode            *m_pstEventProxyNode; //daemon
     TBOOL               m_bEventProxyExist;
     SDownNode            *m_pstThemeEventProxyNode; //kuro for theme event
@@ -184,15 +261,16 @@ struct SSession
     TINT32              m_dwClientResType;                                  // 响应方式：0全量，1增量
     TINT32              m_dwClientReqMode;                                  // 0:http, 1:tcp-长连接
 
-    TCHAR               m_szClientRspBuf[MAX_NETIO_PACKAGE_BUF_LEN];        // client返包Buf
+    TCHAR               m_szClientRspBuf[MAX_NETIO_PACKAGE_BUF_LEN_UL];        // client返包Buf
     TINT32              m_dwFinalPackLength;                                // client返包优化后大小
-    TINT32              m_dwOriPackLength;
 
     /********************************************************************************************
                         内部保留信息(session中间保留信息)
                         *********************************************************************************************/
     SReqParam           m_stReqParam;	// 请求参数
     SCommonResInfo      m_stCommonResInfo;	// 结果相关
+
+    TUINT32             m_udwDownRqstType; //1:read 2:write 3:read&write
 
     /********************************************************************************************
                         借用的task_process变量
@@ -217,8 +295,8 @@ struct SSession
     TUINT64             m_uddwProcessBegTime;
     TUINT64             m_uddwProcessEndTime;
 
-    TUINT32 m_udwEventRqstType; //1:update 2:get_info 3:get_all_info
-    TBOOL m_bGotoOtherCmd;
+    TUINT32             m_udwEventRqstType; //1:update 2:get_info 3:get_all_info
+    TBOOL               m_bGotoOtherCmd;
 
     //event
     vector<EventReqInfo*> m_vecEventReq;
@@ -249,10 +327,6 @@ struct SSession
     void ReleaseDownService()
     {
         CDownMgr *poDownMgr = CDownMgr::Instance();
-        if (m_bAwsProxyNodeExist)
-        {
-            poDownMgr->zk_ReleaseNode(DOWN_NODE_TYPE__AWS_PROXY, m_pstAwsProxyNode);
-        }
         if (m_bEventProxyExist)
         {
             poDownMgr->zk_ReleaseNode(DOWN_NODE_TYPE__EVENT_PROXY, m_pstEventProxyNode);
@@ -261,7 +335,6 @@ struct SSession
         {
             poDownMgr->zk_ReleaseNode(DOWN_NODE_TYPE__THEME_EVENT_PROXY, m_pstThemeEventProxyNode);
         }
-
     }
     void Reset()
     {
@@ -280,6 +353,7 @@ struct SSession
         m_udwExpectProcedure = 0;
         m_udwNextProcedure = 0;
         m_udwProcessSeq = 0;
+        m_udwDownRqstType = 0;
 
         m_ucIsUsing = 0;
         m_bProcessing = FALSE;
@@ -289,8 +363,6 @@ struct SSession
         m_udwContentType = EN_CONTENT_TYPE__STRING;
 
         //下游
-        m_bAwsProxyNodeExist = FALSE;
-        m_pstAwsProxyNode = NULL;
         m_pstEventProxyNode = NULL;
         m_bEventProxyExist = FALSE;
         m_pstThemeEventProxyNode = NULL;
@@ -301,11 +373,6 @@ struct SSession
 
         m_szClientRspBuf[0] = '\0';
         m_dwFinalPackLength = 0;
-        m_dwOriPackLength = 0;
-
-        m_bAwsProxyNodeExist = FALSE;
-        m_pstAwsProxyNode = NULL;
-
 
         m_szClientReqBuf[0] = 0;
         m_udwClientReqBufLen = 0;

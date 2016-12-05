@@ -1,11 +1,11 @@
 #include "hu_work.h"
+#include "encode/src/encode/utf8_util.h"
+#include "template_fun.h"
 #include "zlib.h"
 #include "util_base64.h"
 #include "rc4.h"
+#include "game_info.h"
 #include "game_command.h"
-#include "conf_base.h"
-#include "time_utils.h"
-#include "encode/src/encode/utf8_util.h"
 
 
 using namespace base::encode;
@@ -103,6 +103,7 @@ int CHuWork::GetHttpParam(const char *url_buf, RequestParam *req_param)
             CUtf8Util::QuanJiaoToBanJiao(req_param->param[param_num].key, req_param->param[param_num].key);
             CUtf8Util::QuanJiaoToBanJiao(req_param->param[param_num].value, req_param->param[param_num].value);
         }
+        // TODO(tonghuang): too many param number, notify caller?
         if(param_num >= kMaxReqParam)
             break;
     } while((end_pos != NULL) && ((start_pos = end_pos + 1) != NULL));
@@ -122,6 +123,20 @@ TVOID CHuWork::ProcessString(char *pszStr)
 
     //3¡¢×ª´óÐ´
     CUtf8Util::strtoupper(pszStr);
+}
+
+TUINT64 CHuWork::GetRawDataMd5( const TUCHAR *pszData, const TUINT32 udwDataLen )
+{
+    TUINT64 uddwKey = 0;
+    if(NULL == pszData || 0 == udwDataLen)
+    {
+        uddwKey = 0;
+    }
+    else
+    {
+        MD5Segment(pszData, udwDataLen, (TUCHAR*)&uddwKey, sizeof(uddwKey));
+    }
+    return uddwKey;
 }
 
 TUINT64 CHuWork::GetStringMD5(char* pszStr)
@@ -205,7 +220,6 @@ int CHuWork::GetRequestParam(SSession *session, CTseLogger *serv_log, RequestPar
     return 0;
 }
 
-
 int CHuWork::ProcessReqParam(RequestParam *pstReqParam, SSession *pstSession)
 {
     TINT32 dwIdx = 0, dwIdy = 0;
@@ -244,43 +258,115 @@ int CHuWork::ProcessReqParam(RequestParam *pstReqParam, SSession *pstSession)
     {
         pstHttpParam = &pstReqParam->param[dwIdx];
 
-        if(0 == strcmp(pstHttpParam->key, "sid"))
-        {
-            if(pstHttpParam->value[0])
-            {
-                pstReq->m_dwSvrId = strtoul(pstHttpParam->value, NULL, 10);
-            }
-        }
-        else if (0 == strcmp(pstHttpParam->key, "did"))
+        if(0 == strcmp(pstHttpParam->key, "did"))
         {
             strncpy(pstReq->m_szDevice, pstHttpParam->value, MAX_DEVICE_ID_LEN - 1);
             pstReq->m_szDevice[MAX_DEVICE_ID_LEN - 1] = 0;
             pstReq->m_uddwDeviceId = GetUserMd5(pstHttpParam->value);
         }
+        else if(0 == strcmp(pstHttpParam->key, "os_version"))
+        {
+            strncpy(pstReq->m_szIosVer, pstHttpParam->value, MAX_OS_VER_LEN-1);
+            pstReq->m_szIosVer[MAX_OS_VER_LEN - 1] = 0;
+        }
+        else if(0 == strcmp(pstHttpParam->key, "pid"))
+        {
+            strncpy(pstReq->m_szPid, pstHttpParam->value, MAX_PRODUCT_ID_LEN-1);
+            pstReq->m_szPid[MAX_PRODUCT_ID_LEN - 1] = 0;
+        }
+        else if(0 == strcmp(pstHttpParam->key, "idfa"))
+        {
+            strncpy(pstReq->m_szIdfa, pstHttpParam->value, MAX_DEVICE_ID_LEN-1);
+            pstReq->m_szIdfa[MAX_DEVICE_ID_LEN - 1] = 0;
+        }
+        else if(0 == strcmp(pstHttpParam->key, "vs"))
+        {
+            strncpy(pstReq->m_szVs, pstHttpParam->value, MAX_PRODUCT_ID_LEN - 1);
+            pstReq->m_szVs[MAX_PRODUCT_ID_LEN - 1] = '\0';
+        }
+        else if(0 == strcmp(pstHttpParam->key, "sy"))
+        {
+            strncpy(pstReq->m_szSy, pstHttpParam->value, MAX_PRODUCT_ID_LEN - 1);
+            pstReq->m_szSy[MAX_PRODUCT_ID_LEN - 1] = '\0';
+        }
+        else if(0 == strcmp(pstHttpParam->key, "platform"))
+        {
+            strncpy(pstReq->m_szPlatForm, pstHttpParam->value, MAX_PRODUCT_ID_LEN - 1);
+            pstReq->m_szPlatForm[MAX_PRODUCT_ID_LEN - 1] = '\0';
+        }
+        else if(0 == strcmp(pstHttpParam->key, "sid"))
+        {
+            if(pstHttpParam->value[0])
+            {
+                pstReq->m_udwSvrId = strtoul(pstHttpParam->value, NULL, 10);
+            }
+        }
+        else if(0 == strcmp(pstHttpParam->key, "gid"))
+        {
+            strncpy(pstReq->m_szGameCenterID, pstHttpParam->value, MAX_GAME_CENTER_ID_LEN - 1);
+            pstReq->m_szGameCenterID[MAX_GAME_CENTER_ID_LEN - 1] = 0;
+            pstReq->m_uddwGId = GetUserMd5(pstReq->m_szGameCenterID);
+        }
         else if(0 == strcmp(pstHttpParam->key, "uid"))
         {
-            pstReq->m_ddwUserId = strtol(pstHttpParam->value, NULL, 10);
+            pstReq->m_udwUserId = strtoul(pstHttpParam->value, NULL, 10);
         }
-        /*else if (0 == strcmp(pstHttpParam->key, "pid"))
+        else if(0 == strcmp(pstHttpParam->key, "aid"))
         {
-            strncpy(pstReq->m_szPid, pstHttpParam->value, DEFAULT_NAME_STR_LEN - 1);
-            pstReq->m_szPid[DEFAULT_NAME_STR_LEN - 1] = 0;
+            pstReq->m_udwAllianceId = strtoul(pstHttpParam->value, NULL, 10);
         }
-        else if (0 == strcmp(pstHttpParam->key, "rid"))
+        else if(0 == strcmp(pstHttpParam->key, "cid"))
         {
-            strncpy(pstReq->m_szRid, pstHttpParam->value, DEFAULT_NAME_STR_LEN - 1);
-            pstReq->m_szRid[DEFAULT_NAME_STR_LEN - 1] = 0;
+            pstReq->m_udwCityId = strtoul(pstHttpParam->value, NULL, 10);
         }
-        else if (0 == strcmp(pstHttpParam->key, "platform"))
+        else if(0 == strcmp(pstHttpParam->key, "rid"))
         {
-            strncpy(pstReq->m_szPlatForm, pstHttpParam->value, DEFAULT_NAME_STR_LEN - 1);
-            pstReq->m_szPlatForm[DEFAULT_NAME_STR_LEN - 1] = '\0';
-            for (TUINT32 udwIdx = 0; udwIdx < strlen(pstReq->m_szPlatForm); ++udwIdx)
+            pstReq->m_ddwReportId = strtoll(pstHttpParam->value, NULL, 10);
+        }
+        else if(0 == strcmp(pstHttpParam->key, "mid"))
+        {
+            pstReq->m_ddwMailId = strtoll(pstHttpParam->value, NULL, 10);
+        }
+        else if(0 == strcmp(pstHttpParam->key, "sn"))
+        {
+            pstReq->m_udwSeqNo = strtoul(pstHttpParam->value, NULL, 10);
+        }
+        else if(0 == strcmp(pstHttpParam->key, "version"))
+        {
+            pstReq->m_udwVersion = atof(pstHttpParam->value);
+        }
+        else if(0 == strcmp(pstHttpParam->key, "lg"))
+        {
+            pstReq->m_ucLoginStatus = atoi(pstHttpParam->value);
+            if(pstReq->m_ucLoginStatus != EN_LOGIN_STATUS__USING)
             {
-                pstReq->m_szPlatForm[udwIdx] = tolower(pstReq->m_szPlatForm[udwIdx]);
-
+                pstReq->m_ucLoginStatus = EN_LOGIN_STATUS__LOGIN;
             }
-        }*/
+        }
+        else if(0 == strcmp(pstHttpParam->key, "lang"))
+        {
+            pstReq->m_udwLang = strtoul(pstHttpParam->value, NULL, 10);
+        }
+        else if(0 == strcmp(pstHttpParam->key, "pg"))
+        {
+            pstReq->m_udwPage = strtoul(pstHttpParam->value, NULL, 10);
+            if(pstReq->m_udwPage == 0)
+            {
+                pstReq->m_udwPage = 1;
+            }
+        }
+        else if(0 == strcmp(pstHttpParam->key, "pp"))
+        {
+            pstReq->m_udwPerpage = strtoul(pstHttpParam->value, NULL, 10);
+            if(pstReq->m_udwPerpage == 0 || pstReq->m_udwPerpage > DEFAULT_PERPAGE_NUM)
+            {
+                pstReq->m_udwPerpage = DEFAULT_PERPAGE_NUM;
+            }
+        }
+        else if(0 == strcmp(pstHttpParam->key, "npc"))
+        {
+            pstReq->m_ucIsNpc = atoi(pstHttpParam->value) == 1 ? 1 : 0;
+        }
         else if(0 == strcmp(pstHttpParam->key, "command"))
         {
             strncpy(pstReq->m_szCommand, pstHttpParam->value, DEFAULT_NAME_STR_LEN - 1);
@@ -288,10 +374,48 @@ int CHuWork::ProcessReqParam(RequestParam *pstReqParam, SSession *pstSession)
             pstReq->m_udwCommandID = CClientCmd::GetInstance()->GetCommandID(pstReq->m_szCommand);
 
         }
-        /*else if (0 == strcmp(pstHttpParam->key, "lang"))
+        else if(0 == strcmp(pstHttpParam->key, "sandbox"))
         {
-            pstReq->m_udwLang = strtoul(pstHttpParam->value, NULL, 10);
-        }*/
+            pstReq->m_ucIsSandBox = atoi(pstHttpParam->value);
+        }
+        else if(0 == strcmp(pstHttpParam->key, "checkac"))
+        {
+            pstReq->m_bNeedLoginCheck = strtoul(pstHttpParam->value, NULL, 10);
+        }
+        else if(0 == strcmp(pstHttpParam->key, "reqcost"))
+        {  
+            pstReq->m_ddwReqCost = strtoll(pstHttpParam->value, NULL, 10);
+        }
+        //else if(0 == strcmp(pstHttpParam->key, "rtype"))
+        //{
+        //    TINT32 dwRType = atoi(pstHttpParam->value);
+        //    if(dwRType == 0)
+        //    {
+        //        pstReq->m_ucResType = EN_CONTENT_UPDATE_TYPE__TABLE_INC;
+        //    }
+        //    else
+        //    {
+        //        pstReq->m_ucResType = EN_CONTENT_UPDATE_TYPE__ALL;
+        //    }
+        //}
+        else if (0 == strcmp(pstHttpParam->key, "purchase_token")
+            || 0 == strcmp(pstHttpParam->key, "receipt"))
+        {
+            pstReq->m_szPurchaseToken = pstHttpParam->value;
+        }
+        else if (0 == strcmp(pstHttpParam->key, "package_name"))
+        {
+            pstReq->m_szPackageName = pstHttpParam->value;
+        }
+        else if (0 == strcmp(pstHttpParam->key, "item_id"))
+        {
+            pstReq->m_szItemId = pstHttpParam->value;
+        }
+        else if (0 == strcmp(pstHttpParam->key, "purchase_uid")
+            || 0 == strcmp(pstHttpParam->key, "transaction"))
+        {
+            pstReq->m_szPurchaseUid = pstHttpParam->value;
+        }
         else
         {
             for(dwIdy = 0; dwIdy < MAX_REQ_PARAM_KEY_NUM; dwIdy++)
@@ -309,3 +433,4 @@ int CHuWork::ProcessReqParam(RequestParam *pstReqParam, SSession *pstSession)
 
     return 0;
 }
+

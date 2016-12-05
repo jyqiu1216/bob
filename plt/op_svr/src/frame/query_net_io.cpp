@@ -15,10 +15,8 @@ TINT32 CQueryNetIO::Init(CTseLogger *pLog, CTaskQueue *poTaskQueue)
     // 1. 设置配置对象,日志对象和任务队列
     m_pLog = pLog;
     m_poTaskQueue = poTaskQueue;
-    //m_bHttpOp = CConfBase::GetInt("tcp_mode") == 0 ? TRUE : FALSE;
-    //m_udwContentType = CConfBase::GetInt("req_type") == 0 ? EN_CONTENT_TYPE__STRING : EN_CONTENT_TYPE__BJSON;
-    m_bHttpOp = TRUE;
-    m_udwContentType = EN_CONTENT_TYPE__BJSON;
+    m_bHttpOp = CConfBase::GetInt("tcp_mode") == 0 ? TRUE : FALSE;
+    m_udwContentType = CConfBase::GetInt("req_type") == 0 ? EN_CONTENT_TYPE__STRING : EN_CONTENT_TYPE__BJSON;
     // 2. 创建长连接对象
     m_pLongConn = CreateLongConnObj();
     if (m_pLongConn == NULL)

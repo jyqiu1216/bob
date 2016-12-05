@@ -5,7 +5,8 @@
 #include "conf_base.h"
 #include <string>
 #include <sstream>
-
+#include "warning_mgr.h"
+#include "game_command.h"
 
 // 静态变量定义
 CTseLogger* CGlobalServ::m_poServLog    = NULL;
@@ -44,6 +45,11 @@ TUINT32 CGlobalServ::GenerateHsReqSeq()
     udwSeq = m_udwDownReqSeq;
     pthread_mutex_unlock(&m_mtxDownReqSeq);
     return udwSeq;
+}
+
+int CGlobalServ::InitAwsTable(const TCHAR *pszProjectPrefix)
+{
+    TbAl_member::Init("../tblxml/al_member.xml", pszProjectPrefix);
 }
 
 int CGlobalServ::Init()
@@ -90,6 +96,10 @@ int CGlobalServ::Init()
     }
     TSE_LOG_INFO(m_poServLog, ("GlobalServ init zk_conf success!"));
 
+    //初始化aws_tables
+    InitAwsTable(CConfBase::GetString("tbxml_project").c_str());
+    TSE_LOG_INFO(m_poServLog, ("GlobalServ inittable success!"));
+
     // 初始化ZK客户端
     m_poZkRegClient = new CZkRegClient();
     if (0 != m_poZkRegClient->Init(m_poRegLog, m_poZkConf))
@@ -98,6 +108,14 @@ int CGlobalServ::Init()
         return -4;
     }
     TSE_LOG_INFO(m_poServLog, ("GlobalServ Init zk_reg_client succ"));
+
+    // 初始化命令字信息
+    CClientCmd *poClientCmd = CClientCmd::GetInstance();
+    if (0 != poClientCmd->Init())
+    {
+        TSE_LOG_ERROR(m_poServLog, ("GlobalServ init client cmd info failed!"));
+        return -17;
+    }
 
     // ----------------------初始化队列相关--------------------------------
     // 初始化队列信息
@@ -131,7 +149,7 @@ int CGlobalServ::Init()
 
     // 初始化网络IO——对下游
     m_poSearchNetIO = new CSearchNetIO();
-    if (0 != m_poSearchNetIO->Init(m_poServLog, m_poTaskQueue))
+    if (0 != m_poSearchNetIO->Init(m_poConf, m_poServLog, m_poTaskQueue))
     {
         TSE_LOG_ERROR(m_poServLog, ("GlobalServ init search_net_io failed!"));
         return -8;
@@ -159,6 +177,13 @@ int CGlobalServ::Init()
         }
     }
     TSE_LOG_INFO(m_poServLog, ("GlobalServ init task_process success!"));
+
+    // 初始化告警上报
+    CWarningMgr::GetInstance()->Init(m_poServLog);
+    TSE_LOG_INFO(m_poServLog, ("GlobalServ init warning mgr success!"));
+    // statistic
+    CStatistic *pstStatistic = CStatistic::Instance();
+    pstStatistic->Init(m_poStatLog, m_poConf);
 
     // ----------------------end--------------------------------
     TSE_LOG_INFO(m_poServLog, ("GlobalServ init all success!"));
