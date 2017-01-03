@@ -889,6 +889,19 @@ AwsMap* TbMarch_action::OnUpdateItemReq(
 			}
 			continue;
 		}
+		if (TbMARCH_ACTION_FIELD_EX_REWARD == iter->first)
+		{
+			if (!m_bEx_reward.empty())
+			{
+				pUpdateItem->AddValue("/AttributeUpdates/ex_reward/Value/B", Base64Encode((char*)&m_bEx_reward.m_astList[0], m_bEx_reward.m_udwNum*sizeof(SOneGlobalRes), sBase64Encode));
+				pUpdateItem->AddValue("/AttributeUpdates/ex_reward/Action", "PUT");
+			}
+			else
+			{
+				pUpdateItem->AddValue("/AttributeUpdates/ex_reward/Action", "DELETE");
+			}
+			continue;
+		}
 		assert(0);
 	}
 	if(bUpdateFlag)
@@ -1064,6 +1077,10 @@ AwsMap* TbMarch_action::OnWriteItemReq(int dwActionType)
 		{
 			pItem->AddValue("/def_total_troop/B", Base64Encode((char*)&m_bDef_total_troop.m_astList[0], m_bDef_total_troop.m_udwNum*sizeof(SCommonTroop), sBase64Encode));
 		}
+		if (!m_bEx_reward.empty())
+		{
+			pItem->AddValue("/ex_reward/B", Base64Encode((char*)&m_bEx_reward.m_astList[0], m_bEx_reward.m_udwNum*sizeof(SOneGlobalRes), sBase64Encode));
+		}
 	}
 	else if (WRITE_ACTION_TYPE_DELETE == dwActionType)
 	{
@@ -1194,6 +1211,10 @@ void TbMarch_action::OnWriteItemReq(AwsMap* pWriteItem, int dwActionType)
 		if (!m_bDef_total_troop.empty())
 		{
 			pItem->AddValue("/def_total_troop/B", Base64Encode((char*)&m_bDef_total_troop.m_astList[0], m_bDef_total_troop.m_udwNum*sizeof(SCommonTroop), sBase64Encode));
+		}
+		if (!m_bEx_reward.empty())
+		{
+			pItem->AddValue("/ex_reward/B", Base64Encode((char*)&m_bEx_reward.m_astList[0], m_bEx_reward.m_udwNum*sizeof(SOneGlobalRes), sBase64Encode));
 		}
 	}
 	else if (WRITE_ACTION_TYPE_DELETE == dwActionType)
@@ -1473,6 +1494,10 @@ AwsMap* TbMarch_action::OnPutItemReq(
 	if (!m_bDef_total_troop.empty())
 	{
 		pPutItem->AddValue("/Item/def_total_troop/B", Base64Encode((char*)&m_bDef_total_troop.m_astList[0], m_bDef_total_troop.m_udwNum*sizeof(SCommonTroop), sBase64Encode));
+	}
+	if (!m_bEx_reward.empty())
+	{
+		pPutItem->AddValue("/Item/ex_reward/B", Base64Encode((char*)&m_bEx_reward.m_astList[0], m_bEx_reward.m_udwNum*sizeof(SOneGlobalRes), sBase64Encode));
 	}
 	ostringstream oss;
 	for (unsigned int i = 0; i < expected_desc.vecExpectedItem.size(); ++i)
@@ -1843,6 +1868,12 @@ int TbMarch_action::OnResponse(const Json::Value& item)
 			{
 				m_bDef_total_troop.m_udwNum = 1;
 			}
+			continue;
+		}
+		if (vecMembers[i] == "ex_reward")
+		{
+			Base64Decode(item["ex_reward"]["B"].asString(), (char*)&m_bEx_reward.m_astList[0], dwResLen);
+			m_bEx_reward.m_udwNum = dwResLen/sizeof(SOneGlobalRes);
 			continue;
 		}
 	}

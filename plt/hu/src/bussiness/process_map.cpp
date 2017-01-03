@@ -30,13 +30,20 @@ TINT32 CProcessMap::ProcessCmd_MapGet( SSession *pstSession, TBOOL &bNeedRespons
 
         SGameSvrInfo *pstSvrInfo = CGameSvrInfo::GetInstance()->GetSidInfo(udwSvrId);
         TBOOL bIsNeedGetMap = TRUE;
-        if (pstSvrInfo->m_dwMergeStatus != EN_SVR_MERGE_STATUS__NORMAL && pstSvrInfo->m_dwMergeStatus != EN_SVR_MERGE_STATUS__PROTECTED)
+        if (!pstSvrInfo)
+        {
+            bIsNeedGetMap = FALSE;
+        }
+        else if (pstSvrInfo && pstSvrInfo->m_dwMergeStatus != EN_SVR_MERGE_STATUS__NORMAL && pstSvrInfo->m_dwMergeStatus != EN_SVR_MERGE_STATUS__PROTECTED)
         {
             bIsNeedGetMap = FALSE;
         }
 
-        TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessCmd_MapGet: NEMO need get map[%d][svr=%u][id=%u,target=%d status=%d] [seq=%u]", 
-            bIsNeedGetMap, udwSvrId, pstSvrInfo->m_udwId, pstSvrInfo->m_dwMergeTargetSid, pstSvrInfo->m_dwMergeStatus, pstSession->m_stUserInfo.m_udwBSeqNo));
+        if (pstSvrInfo)
+        {
+            TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessCmd_MapGet: NEMO need get map[%d][svr=%u][id=%u,target=%d status=%d] [seq=%u]",
+                bIsNeedGetMap, udwSvrId, pstSvrInfo->m_udwId, pstSvrInfo->m_dwMergeTargetSid, pstSvrInfo->m_dwMergeStatus, pstSession->m_stUserInfo.m_udwBSeqNo));
+        }
 
         TCHAR *pCur = pszPos;
         TCHAR *pWild = pszPos;

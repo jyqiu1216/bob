@@ -37,25 +37,9 @@ public:
 
     static TBOOL HaveCollectedOut(SUserInfo *pstUser, TbMarch_action *ptbMainMarch, TbMap *ptbWild);
 
-    static TINT32 GetAttackReward(TbMarch_action *ptbMarch, TbMap *ptbWild);
-
-    static TVOID GenWildItemReward(TbMap* ptbWild, TbMarch_action* ptbReqMarch,TUINT32 udwTime = 1);
-    static TBOOL GenConfirmWildItemReward(TbMap* ptbWild, TbMarch_action* ptbReqMarch,TUINT32 udwTime = 1);
-    static TBOOL GenRandomWildItemReward(TbMap* ptbWild, TbMarch_action* ptbReqMarch,TUINT32 udwTime = 1);
-    static TBOOL GenOneWildItemReward(TbMap* ptbWild, TbMarch_action* ptbReqMarch,TUINT32 udwTime = 1);
-
-    static TVOID GenSurpriseResult(TbMap* ptbWild, TbMarch_action* ptbMarch);
-    static TBOOL GenSurpriceConfirmWildItemReward(TbMap* ptbWild, TbMarch_action* ptbReqMarch);
-    static TBOOL GenSurpriceRandomWildItemReward(TbMap* ptbWild, TbMarch_action* ptbReqMarch);
-    static TBOOL GenSurpriceOneWildItemReward(TbMap* ptbWild, TbMarch_action* ptbReqMarch);
-
     static TINT32 GetIdxById(TUINT32 udwId, TbMap *patbMap, TUINT32 udwNum);
     static TBOOL IsPosCanMove(TUINT32 udwPos, TbMap *patbMap, TUINT32 udwNum, TUINT32 udwTypeBlockNum, TUINT32 udwSid);
     static TBOOL IsPosCanMove(TbMap *patbMap);
-
-    static TBOOL GenMosterAllianceGift(SUserInfo *pstUser, TbMap *ptbWild, TbMarch_action *ptbReqAction);
-
-    static TVOID GenStageResult(TbMap* ptbWild, TbMarch_action* ptbMarch, TINT32 dwLoadTime);
 
     static TINT32 GetResTypeByWildType(TUINT32 udwSid, TINT32 dwWildType, TUINT32 udwLv);
 

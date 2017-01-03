@@ -4,7 +4,7 @@
 #include "queue_t.h"
 #include "base/common/wtsetypedef.h"
 
-#define MAX_LEN_DELAY_MSG          (2048)
+#define MAX_LEN_DELAY_MSG          (20480)
 
 struct SDelayMsgTask
 {

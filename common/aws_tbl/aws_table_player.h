@@ -101,6 +101,7 @@ enum ETbPlayerField
 	TbPLAYER_FIELD_REINFORCE_LIMIT = 90,
 	TbPLAYER_FIELD_EVIL_FORCE_KILL = 91,
 	TbPLAYER_FIELD_EVIL_TROOP_KILL = 92,
+	TbPLAYER_FIELD_VIP_STAGE = 93,
 };
 
 enum ETbPlayerOpenType
@@ -252,6 +253,7 @@ public:
 	TbPlayer_Reinforce_limit m_bReinforce_limit;
 	TINT64 m_nEvil_force_kill;
 	TINT64 m_nEvil_troop_kill;
+	TINT64 m_nVip_stage;
 
 public:
 	static TableDesc oTableDesc;
@@ -361,6 +363,7 @@ public:
 		m_bReinforce_limit.Reset();
 		m_nEvil_force_kill = 0;
 		m_nEvil_troop_kill = 0;
+		m_nVip_stage = 0;
 		ClearFlag();
 	};
 	const TINT64& Get_Sid()
@@ -1054,6 +1057,15 @@ public:
 	{
 		m_nEvil_troop_kill = nEvil_troop_kill;
 		m_mFlag[TbPLAYER_FIELD_EVIL_TROOP_KILL] = dwActionType;
+	}
+	const TINT64& Get_Vip_stage()
+	{
+		return m_nVip_stage;
+	}
+	void Set_Vip_stage(const TINT64& nVip_stage, int dwActionType=UPDATE_ACTION_TYPE_PUT)
+	{
+		m_nVip_stage = nVip_stage;
+		m_mFlag[TbPLAYER_FIELD_VIP_STAGE] = dwActionType;
 	}
 	//Scan命令使用,返回完整的请求包
 	AwsMap* OnScanReq(unsigned int udwIdxNo, bool bHasStartKey = false, bool bReturnConsumedCapacity = true,

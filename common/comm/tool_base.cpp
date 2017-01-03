@@ -429,3 +429,12 @@ TBOOL CToolBase::IsValidName(const string& strName, const TINT32 dwType)
     }
     return bIsValid;
 }
+
+TUINT64 CToolBase::GetClientBuildTaskId(TINT64 ddwUid, TUINT32 udwClientSeq)
+{
+    TUINT64 uddwTaskId = 0;
+
+    uddwTaskId = (ddwUid << 32) + CLIENT_ACTION_ID_OFFSET + udwClientSeq;
+
+    return uddwTaskId;
+}

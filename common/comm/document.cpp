@@ -29,33 +29,33 @@ TINT32 CDocument::Init_All(CTseLogger *poLog)
     // 0. set param
     m_poLog = poLog;
 
-    dwRetCode = Init(poLog, DOCUMENT_ENGLISH_FILE);
+    dwRetCode = Init(poLog, DOCUMENT_ENGLISH_FILE, SUB_DOCUMENT_ENGLISH_FILE);
     if(dwRetCode < 0)
     {
         return -1;
     }
-    dwRetCode = Init(poLog, DOCUMENT_FRENCH_FILE);
+    dwRetCode = Init(poLog, DOCUMENT_FRENCH_FILE, SUB_DOCUMENT_FRENCH_FILE);
     if(dwRetCode < 0)
     {
         return -1;
     }
-    dwRetCode = Init(poLog, DOCUMENT_GERMAN_FILE);
+    dwRetCode = Init(poLog, DOCUMENT_GERMAN_FILE, SUB_DOCUMENT_GERMAN_FILE);
     if(dwRetCode < 0)
     {
         return -1;
     }
-    dwRetCode = Init(poLog, DOCUMENT_SPAIN_FILE);
+    dwRetCode = Init(poLog, DOCUMENT_SPAIN_FILE, SUB_DOCUMENT_SPAIN_FILE);
     if(dwRetCode < 0)
     {
         return -1;
     }    
-    dwRetCode = Init(poLog, DOCUMENT_RUSSIAN_FILE);
+    dwRetCode = Init(poLog, DOCUMENT_RUSSIAN_FILE, SUB_DOCUMENT_RUSSIAN_FILE);
     if(dwRetCode < 0)
     {
     return -1;
     }
 
-    dwRetCode = Init(poLog, DOCUMENT_CHINESE_FILE);
+    dwRetCode = Init(poLog, DOCUMENT_CHINESE_FILE, SUB_DOCUMENT_CHINESE_FILE);
     if (dwRetCode < 0)
     {
         return -1;
@@ -152,7 +152,7 @@ TINT32 CDocument::Update_All(CTseLogger *poLog)
     return 0;
 }
 
-TINT32 CDocument::Init(CTseLogger *poLog, string strDocumentFileName)
+TINT32 CDocument::Init(CTseLogger *poLog, string strDocumentFileName, string strSubDocFileName)
 {
     if(poLog == NULL)
     {
@@ -214,6 +214,10 @@ TINT32 CDocument::Init(CTseLogger *poLog, string strDocumentFileName)
     TSE_LOG_INFO(m_poLog, ("[language=%s]", strDocumentFileName.c_str()));
     m_oDocumentMap[strDocumentFileName] = oJsonTmp;
 
+    if (CDocument::LoadSubDoc(m_poLog, strDocumentFileName, strSubDocFileName) < 0)
+    {
+        return -3;
+    }
     return 0;
 }
 
@@ -467,4 +471,68 @@ string CDocument::GetSvrName(TINT32 dwSvrId)
     }
 
     return stDocumentJson["doc_world"][CCommonFunc::NumToString(dwSvrId)]["svr_name"].asString();
+}
+
+TINT32 CDocument::LoadSubDoc(CTseLogger *poLog, string strDocumentFileName, string strSubDocFileName)
+{
+    if (poLog == NULL)
+    {
+        return -1;
+    }
+    // 1.判断配置文件，必须存在
+    if (0 != access(strSubDocFileName.c_str(), F_OK))
+    {
+        return 0;
+    }
+
+    Json::Reader reader;
+    std::ifstream is;
+    is.open(strSubDocFileName.c_str(), std::ios::binary);
+    Json::Value tmpRawJson;
+    if (reader.parse(is, tmpRawJson) == false)
+    {
+        TSE_LOG_ERROR(m_poLog, ("CDocument::LoadSubDoc: parse file[%s] failed.", strSubDocFileName.c_str()));
+        is.close();
+        return -2;
+    }
+    else
+    {
+        //Load sub_document.json
+        Json::Value &m_oJsonRoot = m_oDocumentMap[strDocumentFileName];
+        Json::Value::Members jMembers = tmpRawJson.getMemberNames();
+        for (TUINT32 udwIdx = 0; udwIdx < jMembers.size(); udwIdx++)
+        {
+            if (!m_oJsonRoot.isMember(jMembers[udwIdx]))
+            {
+                m_oJsonRoot[jMembers[udwIdx]] = tmpRawJson[jMembers[udwIdx]];
+                continue;
+            }
+            Json::Value::Members jSubMembs = tmpRawJson[jMembers[udwIdx]].getMemberNames();
+            for (TUINT32 udwIdy = 0; udwIdy < jSubMembs.size(); udwIdy++)
+            {
+                if (m_oJsonRoot[jMembers[udwIdx]].isMember(jSubMembs[udwIdy]))
+                {
+                    continue;
+                }
+                m_oJsonRoot[jMembers[udwIdx]][jSubMembs[udwIdy]] = tmpRawJson[jMembers[udwIdx]][jSubMembs[udwIdy]];
+            }
+        }
+        TSE_LOG_INFO(m_poLog, ("CDocument::LoadSubDoc: parse file[%s] success.", strSubDocFileName.c_str()));
+        is.close();
+        //for debug
+        //std::ofstream tmp;
+        //string file_tmp = strSubDocFileName + ".txt";
+        //tmp.open(file_tmp.c_str());
+        //if (!tmp)
+        //{
+        //    return -3;
+        //}
+        //string strJson;
+        //Json::FastWriter writer;
+        //writer.omitEndingLineFeed();
+        //strJson = writer.write(m_oJsonRoot);
+        //tmp << strJson.c_str() << endl;
+        //tmp.close();
+    }
+    return 0;
 }

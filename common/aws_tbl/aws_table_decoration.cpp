@@ -1,8 +1,8 @@
-#include "aws_table_notic_push_uid.h"
+#include "aws_table_decoration.h"
 
-TableDesc TbNotic_push_uid::oTableDesc;
+TableDesc TbDecoration::oTableDesc;
 
-int TbNotic_push_uid::Init(const string& sConfFile, const string strProjectName)
+int TbDecoration::Init(const string& sConfFile, const string strProjectName)
 {
 	CFieldProperty fld_prop;
 	if (fld_prop.Init(sConfFile.c_str()) == false)
@@ -16,12 +16,12 @@ int TbNotic_push_uid::Init(const string& sConfFile, const string strProjectName)
 	return 0;
 }
 
-AwsTable* TbNotic_push_uid::NewObject()
+AwsTable* TbDecoration::NewObject()
 {
-	return new TbNotic_push_uid;
+	return new TbDecoration;
 }
 
-string TbNotic_push_uid::GetTableName()
+string TbDecoration::GetTableName()
 {
 	ostringstream oss;
 	if(!oTableDesc.m_strProjectName.empty())
@@ -33,12 +33,12 @@ string TbNotic_push_uid::GetTableName()
 	return oss.str();
 }
 
-TINT32 TbNotic_push_uid::GetTableIdx()
+TINT32 TbDecoration::GetTableIdx()
 {
 	 return 0;
 }
 
-AwsMap* TbNotic_push_uid::OnScanReq(unsigned int udwIdxNo, bool bHasStartKey, bool bReturnConsumedCapacity,
+AwsMap* TbDecoration::OnScanReq(unsigned int udwIdxNo, bool bHasStartKey, bool bReturnConsumedCapacity,
 	 unsigned int dwLimit, unsigned int dwSegment, unsigned int dwTotalSegments)
 {
 	oJsonWriter.omitEndingLineFeed();
@@ -83,7 +83,7 @@ AwsMap* TbNotic_push_uid::OnScanReq(unsigned int udwIdxNo, bool bHasStartKey, bo
 	return pScan;
 }
 
-int TbNotic_push_uid::OnScanReq(string& sPostData, unsigned int udwIdxNo, bool bHasStartKey, bool bReturnConsumedCapacity,
+int TbDecoration::OnScanReq(string& sPostData, unsigned int udwIdxNo, bool bHasStartKey, bool bReturnConsumedCapacity,
  unsigned int dwLimit, unsigned int dwSegment, unsigned int dwTotalSegments)
 {
 	AwsMap* pScan = OnScanReq(udwIdxNo, bHasStartKey, bReturnConsumedCapacity, dwLimit, dwSegment, dwTotalSegments);
@@ -94,12 +94,12 @@ int TbNotic_push_uid::OnScanReq(string& sPostData, unsigned int udwIdxNo, bool b
 	return 0;
 }
 
-int TbNotic_push_uid::OnScanRsp(const Json::Value& item)
+int TbDecoration::OnScanRsp(const Json::Value& item)
 {
 	return OnResponse(item);
 }
 
-AwsMap* TbNotic_push_uid::OnQueryReq(unsigned int udwIdxNo, const CompareDesc& comp_desc,
+AwsMap* TbDecoration::OnQueryReq(unsigned int udwIdxNo, const CompareDesc& comp_desc,
 	bool bConsistentRead, bool bReturnConsumedCapacity, bool bScanIndexForward, unsigned int dwLimit, bool bCount)
 {
 	oJsonWriter.omitEndingLineFeed();
@@ -149,7 +149,7 @@ AwsMap* TbNotic_push_uid::OnQueryReq(unsigned int udwIdxNo, const CompareDesc& c
 		FieldDesc& fld_desc = oTableDesc.mFieldDesc[idx_desc.vecIdxFld[i]];
 		if (i == 0) //0只能是hash key，HASH KEY只能是EQ方式
 		{
-			if(fld_desc.udwFldNo == TbNOTIC_PUSH_UID_FIELD_UID)
+			if(fld_desc.udwFldNo == TbDECORATION_FIELD_UID)
 			{
 				pQuery->AddValue("/KeyConditions/uid/AttributeValueList[0]/N", m_nUid);
 				pQuery->AddValue("/KeyConditions/uid/ComparisonOperator", "EQ");
@@ -176,7 +176,7 @@ AwsMap* TbNotic_push_uid::OnQueryReq(unsigned int udwIdxNo, const CompareDesc& c
 	return pQuery;
 }
 
-int TbNotic_push_uid::OnQueryReq(string& sPostData, unsigned int udwIdxNo, const CompareDesc& comp_desc,
+int TbDecoration::OnQueryReq(string& sPostData, unsigned int udwIdxNo, const CompareDesc& comp_desc,
 	bool bConsistentRead, bool bReturnConsumedCapacity, bool bScanIndexForward, unsigned int dwLimit)
 {
 	oJsonWriter.omitEndingLineFeed();
@@ -188,12 +188,12 @@ int TbNotic_push_uid::OnQueryReq(string& sPostData, unsigned int udwIdxNo, const
 	return 0;
 }
 
-int TbNotic_push_uid::OnQueryRsp(const Json::Value& item)
+int TbDecoration::OnQueryRsp(const Json::Value& item)
 {
 	return OnResponse(item);
 }
 
-int TbNotic_push_uid::OnCountReq(string& sPostData, unsigned int udwIdxNo, const CompareDesc& comp_desc, 
+int TbDecoration::OnCountReq(string& sPostData, unsigned int udwIdxNo, const CompareDesc& comp_desc, 
 		bool bConsistentRead, bool bReturnConsumedCapacity, bool bScanIndexForward, unsigned int dwLimit)
 {
 	AwsMap* pQuery = OnQueryReq(udwIdxNo, comp_desc, bConsistentRead, bReturnConsumedCapacity, bScanIndexForward, dwLimit, true);
@@ -204,7 +204,7 @@ int TbNotic_push_uid::OnCountReq(string& sPostData, unsigned int udwIdxNo, const
 	return 0;
 }
 
-AwsMap* TbNotic_push_uid::OnUpdateItemReq(
+AwsMap* TbDecoration::OnUpdateItemReq(
 	const ExpectedDesc& expected_desc, int dwReturnValuesType, bool bReturnConsumedCapacity)
 {
 	oJsonWriter.omitEndingLineFeed();
@@ -230,7 +230,46 @@ AwsMap* TbNotic_push_uid::OnUpdateItemReq(
 	for (map<unsigned int, int>::iterator iter = m_mFlag.begin(); iter != m_mFlag.end(); ++iter)
 	{
 		bUpdateFlag = true;
-		if (TbNOTIC_PUSH_UID_FIELD_SEQ == iter->first)
+		if (TbDECORATION_FIELD_OPEN_TIME == iter->first)
+		{
+			if(UPDATE_ACTION_TYPE_DELETE == iter->second)
+			{
+				pUpdateItem->AddValue("/AttributeUpdates/open_time/Action", "DELETE");
+			}
+			else
+			{
+				pUpdateItem->AddValue("/AttributeUpdates/open_time/Value/N", m_nOpen_time);
+				pUpdateItem->AddValue("/AttributeUpdates/open_time/Action", UpdateActionType2Str(iter->second));
+			}
+			continue;
+		}
+		if (TbDECORATION_FIELD_SERIES_LIST == iter->first)
+		{
+			if (!m_jSeries_list.empty())
+			{
+				pUpdateItem->AddValue("/AttributeUpdates/series_list/Value/S", JsonEncode(oJsonWriter.write(m_jSeries_list), sJsonEncode));
+				pUpdateItem->AddValue("/AttributeUpdates/series_list/Action", "PUT");
+			}
+			else
+			{
+				pUpdateItem->AddValue("/AttributeUpdates/series_list/Action", "DELETE");
+			}
+			continue;
+		}
+		if (TbDECORATION_FIELD_DECORATION_LIST == iter->first)
+		{
+			if (!m_jDecoration_list.empty())
+			{
+				pUpdateItem->AddValue("/AttributeUpdates/decoration_list/Value/S", JsonEncode(oJsonWriter.write(m_jDecoration_list), sJsonEncode));
+				pUpdateItem->AddValue("/AttributeUpdates/decoration_list/Action", "PUT");
+			}
+			else
+			{
+				pUpdateItem->AddValue("/AttributeUpdates/decoration_list/Action", "DELETE");
+			}
+			continue;
+		}
+		if (TbDECORATION_FIELD_SEQ == iter->first)
 		{
 			if(UPDATE_ACTION_TYPE_DELETE == iter->second)
 			{
@@ -240,136 +279,6 @@ AwsMap* TbNotic_push_uid::OnUpdateItemReq(
 			{
 				pUpdateItem->AddValue("/AttributeUpdates/seq/Value/N", m_nSeq);
 				pUpdateItem->AddValue("/AttributeUpdates/seq/Action", UpdateActionType2Str(iter->second));
-			}
-			continue;
-		}
-		if (TbNOTIC_PUSH_UID_FIELD_DID == iter->first)
-		{
-			if(UPDATE_ACTION_TYPE_DELETE == iter->second)
-			{
-				pUpdateItem->AddValue("/AttributeUpdates/did/Action", "DELETE");
-			}
-			else
-			{
-				pUpdateItem->AddValue("/AttributeUpdates/did/Value/N", m_nDid);
-				pUpdateItem->AddValue("/AttributeUpdates/did/Action", UpdateActionType2Str(iter->second));
-			}
-			continue;
-		}
-		if (TbNOTIC_PUSH_UID_FIELD_DE == iter->first)
-		{
-			if (!m_sDe.empty())
-			{
-				pUpdateItem->AddValue("/AttributeUpdates/de/Value/S", JsonEncode(m_sDe, sJsonEncode));
-				pUpdateItem->AddValue("/AttributeUpdates/de/Action", "PUT");
-			}
-			else
-			{
-				pUpdateItem->AddValue("/AttributeUpdates/de/Action", "DELETE");
-			}
-			continue;
-		}
-		if (TbNOTIC_PUSH_UID_FIELD_APNS_TOKEN == iter->first)
-		{
-			if (!m_sApns_token.empty())
-			{
-				pUpdateItem->AddValue("/AttributeUpdates/apns_token/Value/S", JsonEncode(m_sApns_token, sJsonEncode));
-				pUpdateItem->AddValue("/AttributeUpdates/apns_token/Action", "PUT");
-			}
-			else
-			{
-				pUpdateItem->AddValue("/AttributeUpdates/apns_token/Action", "DELETE");
-			}
-			continue;
-		}
-		if (TbNOTIC_PUSH_UID_FIELD_APNS_NUM == iter->first)
-		{
-			if(UPDATE_ACTION_TYPE_DELETE == iter->second)
-			{
-				pUpdateItem->AddValue("/AttributeUpdates/apns_num/Action", "DELETE");
-			}
-			else
-			{
-				pUpdateItem->AddValue("/AttributeUpdates/apns_num/Value/N", m_nApns_num);
-				pUpdateItem->AddValue("/AttributeUpdates/apns_num/Action", UpdateActionType2Str(iter->second));
-			}
-			continue;
-		}
-		if (TbNOTIC_PUSH_UID_FIELD_UTIME == iter->first)
-		{
-			if(UPDATE_ACTION_TYPE_DELETE == iter->second)
-			{
-				pUpdateItem->AddValue("/AttributeUpdates/utime/Action", "DELETE");
-			}
-			else
-			{
-				pUpdateItem->AddValue("/AttributeUpdates/utime/Value/N", m_nUtime);
-				pUpdateItem->AddValue("/AttributeUpdates/utime/Action", UpdateActionType2Str(iter->second));
-			}
-			continue;
-		}
-		if (TbNOTIC_PUSH_UID_FIELD_IDFA == iter->first)
-		{
-			if (!m_sIdfa.empty())
-			{
-				pUpdateItem->AddValue("/AttributeUpdates/idfa/Value/S", JsonEncode(m_sIdfa, sJsonEncode));
-				pUpdateItem->AddValue("/AttributeUpdates/idfa/Action", "PUT");
-			}
-			else
-			{
-				pUpdateItem->AddValue("/AttributeUpdates/idfa/Action", "DELETE");
-			}
-			continue;
-		}
-		if (TbNOTIC_PUSH_UID_FIELD_PLATFORM == iter->first)
-		{
-			if (!m_sPlatform.empty())
-			{
-				pUpdateItem->AddValue("/AttributeUpdates/platform/Value/S", JsonEncode(m_sPlatform, sJsonEncode));
-				pUpdateItem->AddValue("/AttributeUpdates/platform/Action", "PUT");
-			}
-			else
-			{
-				pUpdateItem->AddValue("/AttributeUpdates/platform/Action", "DELETE");
-			}
-			continue;
-		}
-		if (TbNOTIC_PUSH_UID_FIELD_LANG == iter->first)
-		{
-			if(UPDATE_ACTION_TYPE_DELETE == iter->second)
-			{
-				pUpdateItem->AddValue("/AttributeUpdates/lang/Action", "DELETE");
-			}
-			else
-			{
-				pUpdateItem->AddValue("/AttributeUpdates/lang/Value/N", m_nLang);
-				pUpdateItem->AddValue("/AttributeUpdates/lang/Action", UpdateActionType2Str(iter->second));
-			}
-			continue;
-		}
-		if (TbNOTIC_PUSH_UID_FIELD_APNS_SWITCH == iter->first)
-		{
-			if (!m_jApns_switch.empty())
-			{
-				pUpdateItem->AddValue("/AttributeUpdates/apns_switch/Value/S", JsonEncode(oJsonWriter.write(m_jApns_switch), sJsonEncode));
-				pUpdateItem->AddValue("/AttributeUpdates/apns_switch/Action", "PUT");
-			}
-			else
-			{
-				pUpdateItem->AddValue("/AttributeUpdates/apns_switch/Action", "DELETE");
-			}
-			continue;
-		}
-		if (TbNOTIC_PUSH_UID_FIELD_ARN == iter->first)
-		{
-			if (!m_sArn.empty())
-			{
-				pUpdateItem->AddValue("/AttributeUpdates/arn/Value/S", JsonEncode(m_sArn, sJsonEncode));
-				pUpdateItem->AddValue("/AttributeUpdates/arn/Action", "PUT");
-			}
-			else
-			{
-				pUpdateItem->AddValue("/AttributeUpdates/arn/Action", "DELETE");
 			}
 			continue;
 		}
@@ -410,7 +319,7 @@ AwsMap* TbNotic_push_uid::OnUpdateItemReq(
 	return pUpdateItem;
 }
 
-int TbNotic_push_uid::OnUpdateItemReq(string& sPostData,
+int TbDecoration::OnUpdateItemReq(string& sPostData,
 	const ExpectedDesc& expected_desc, int dwReturnValuesType, bool bReturnConsumedCapacity)
 {
 	AwsMap* pUpdateItem = OnUpdateItemReq(expected_desc, dwReturnValuesType, bReturnConsumedCapacity);
@@ -426,12 +335,12 @@ int TbNotic_push_uid::OnUpdateItemReq(string& sPostData,
 	return 0;
 }
 
-int TbNotic_push_uid::OnUpdateItemRsp(const Json::Value& item)
+int TbDecoration::OnUpdateItemRsp(const Json::Value& item)
 {
 	return OnResponse(item);
 }
 
-AwsMap* TbNotic_push_uid::OnWriteItemReq(int dwActionType)
+AwsMap* TbDecoration::OnWriteItemReq(int dwActionType)
 {
 	++m_nSeq;
 	oJsonWriter.omitEndingLineFeed();
@@ -444,35 +353,16 @@ AwsMap* TbNotic_push_uid::OnWriteItemReq(int dwActionType)
 	{
 		pItem = pWriteItem->GetAwsMap("PutRequest")->GetAwsMap("Item");
 		pItem->AddValue("/uid/N", m_nUid);
+		pItem->AddValue("/open_time/N", m_nOpen_time);
+		if (!m_jSeries_list.empty())
+		{
+				pItem->AddValue("/AttributeUpdates/series_list/Value/S", JsonEncode(oJsonWriter.write(m_jSeries_list), sJsonEncode));
+		}
+		if (!m_jDecoration_list.empty())
+		{
+				pItem->AddValue("/AttributeUpdates/decoration_list/Value/S", JsonEncode(oJsonWriter.write(m_jDecoration_list), sJsonEncode));
+		}
 		pItem->AddValue("/seq/N", m_nSeq);
-		pItem->AddValue("/did/N", m_nDid);
-		if (!m_sDe.empty())
-		{
-			pItem->AddValue("/de/S", JsonEncode(m_sDe, sJsonEncode));
-		}
-		if (!m_sApns_token.empty())
-		{
-			pItem->AddValue("/apns_token/S", JsonEncode(m_sApns_token, sJsonEncode));
-		}
-		pItem->AddValue("/apns_num/N", m_nApns_num);
-		pItem->AddValue("/utime/N", m_nUtime);
-		if (!m_sIdfa.empty())
-		{
-			pItem->AddValue("/idfa/S", JsonEncode(m_sIdfa, sJsonEncode));
-		}
-		if (!m_sPlatform.empty())
-		{
-			pItem->AddValue("/platform/S", JsonEncode(m_sPlatform, sJsonEncode));
-		}
-		pItem->AddValue("/lang/N", m_nLang);
-		if (!m_jApns_switch.empty())
-		{
-				pItem->AddValue("/AttributeUpdates/apns_switch/Value/S", JsonEncode(oJsonWriter.write(m_jApns_switch), sJsonEncode));
-		}
-		if (!m_sArn.empty())
-		{
-			pItem->AddValue("/arn/S", JsonEncode(m_sArn, sJsonEncode));
-		}
 	}
 	else if (WRITE_ACTION_TYPE_DELETE == dwActionType)
 	{
@@ -486,7 +376,7 @@ AwsMap* TbNotic_push_uid::OnWriteItemReq(int dwActionType)
 	return pWriteItem;
 }
 
-void TbNotic_push_uid::OnWriteItemReq(AwsMap* pWriteItem, int dwActionType)
+void TbDecoration::OnWriteItemReq(AwsMap* pWriteItem, int dwActionType)
 {
 	++m_nSeq;
 	assert(pWriteItem);
@@ -499,35 +389,16 @@ void TbNotic_push_uid::OnWriteItemReq(AwsMap* pWriteItem, int dwActionType)
 	{
 		pItem = pReqItem->GetAwsMap("PutRequest")->GetAwsMap("Item");
 		pItem->AddValue("/uid/N", m_nUid);
+		pItem->AddValue("/open_time/N", m_nOpen_time);
+		if (!m_jSeries_list.empty())
+		{
+				pItem->AddValue("/AttributeUpdates/series_list/Value/S", JsonEncode(oJsonWriter.write(m_jSeries_list), sJsonEncode));
+		}
+		if (!m_jDecoration_list.empty())
+		{
+				pItem->AddValue("/AttributeUpdates/decoration_list/Value/S", JsonEncode(oJsonWriter.write(m_jDecoration_list), sJsonEncode));
+		}
 		pItem->AddValue("/seq/N", m_nSeq);
-		pItem->AddValue("/did/N", m_nDid);
-		if (!m_sDe.empty())
-		{
-			pItem->AddValue("/de/S", JsonEncode(m_sDe, sJsonEncode));
-		}
-		if (!m_sApns_token.empty())
-		{
-			pItem->AddValue("/apns_token/S", JsonEncode(m_sApns_token, sJsonEncode));
-		}
-		pItem->AddValue("/apns_num/N", m_nApns_num);
-		pItem->AddValue("/utime/N", m_nUtime);
-		if (!m_sIdfa.empty())
-		{
-			pItem->AddValue("/idfa/S", JsonEncode(m_sIdfa, sJsonEncode));
-		}
-		if (!m_sPlatform.empty())
-		{
-			pItem->AddValue("/platform/S", JsonEncode(m_sPlatform, sJsonEncode));
-		}
-		pItem->AddValue("/lang/N", m_nLang);
-		if (!m_jApns_switch.empty())
-		{
-				pItem->AddValue("/AttributeUpdates/apns_switch/Value/S", JsonEncode(oJsonWriter.write(m_jApns_switch), sJsonEncode));
-		}
-		if (!m_sArn.empty())
-		{
-			pItem->AddValue("/arn/S", JsonEncode(m_sArn, sJsonEncode));
-		}
 	}
 	else if (WRITE_ACTION_TYPE_DELETE == dwActionType)
 	{
@@ -541,7 +412,7 @@ void TbNotic_push_uid::OnWriteItemReq(AwsMap* pWriteItem, int dwActionType)
 	pWriteItem->GetAwsMap("RequestItems")->GetAwsList(GetTableName())->SetValue(pReqItem, true);
 }
 
-AwsMap* TbNotic_push_uid::OnReadItemReq(unsigned int udwIdxNo)
+AwsMap* TbDecoration::OnReadItemReq(unsigned int udwIdxNo)
 {
 	oJsonWriter.omitEndingLineFeed();
 	IndexDesc& idx_desc = oTableDesc.mIndexDesc[udwIdxNo];
@@ -560,7 +431,7 @@ AwsMap* TbNotic_push_uid::OnReadItemReq(unsigned int udwIdxNo)
 	return pReadItem;
 }
 
-void TbNotic_push_uid::OnReadItemReq(AwsMap* pReadItem)
+void TbDecoration::OnReadItemReq(AwsMap* pReadItem)
 {
 	assert(pReadItem);
 	AwsList* pKeys = pReadItem->GetAwsMap("RequestItems")->GetAwsMap(GetTableName())->GetAwsList("Keys");
@@ -570,12 +441,12 @@ void TbNotic_push_uid::OnReadItemReq(AwsMap* pReadItem)
 	pKeys->SetValue(pKey, true);
 }
 
-int TbNotic_push_uid::OnReadItemRsp(const Json::Value& item)
+int TbDecoration::OnReadItemRsp(const Json::Value& item)
 {
 	return OnResponse(item);
 }
 
-AwsMap* TbNotic_push_uid::OnDeleteItemReq(
+AwsMap* TbDecoration::OnDeleteItemReq(
 	const ExpectedDesc& expected_desc, int dwReturnValuesType, bool bReturnConsumedCapacity)
 {
 	oJsonWriter.omitEndingLineFeed();
@@ -620,7 +491,7 @@ AwsMap* TbNotic_push_uid::OnDeleteItemReq(
 	return pDeleteItem;
 }
 
-int TbNotic_push_uid::OnDeleteItemReq(string& sPostData,
+int TbDecoration::OnDeleteItemReq(string& sPostData,
 	const ExpectedDesc& expected_desc, int dwReturnValuesType, bool bReturnConsumedCapacity)
 {
 	++m_nSeq;
@@ -632,12 +503,12 @@ int TbNotic_push_uid::OnDeleteItemReq(string& sPostData,
 	return 0;
 }
 
-int TbNotic_push_uid::OnDeleteItemRsp(const Json::Value& item)
+int TbDecoration::OnDeleteItemRsp(const Json::Value& item)
 {
 	return OnResponse(item);
 }
 
-AwsMap* TbNotic_push_uid::OnGetItemReq(unsigned int udwIdxNo,
+AwsMap* TbDecoration::OnGetItemReq(unsigned int udwIdxNo,
 	bool bConsistentRead, bool bReturnConsumedCapacity)
 {
 	oJsonWriter.omitEndingLineFeed();
@@ -664,7 +535,7 @@ AwsMap* TbNotic_push_uid::OnGetItemReq(unsigned int udwIdxNo,
 	return pGetItem;
 }
 
-int TbNotic_push_uid::OnGetItemReq(string& sPostData, unsigned int udwIdxNo,
+int TbDecoration::OnGetItemReq(string& sPostData, unsigned int udwIdxNo,
 	bool bConsistentRead, bool bReturnConsumedCapacity)
 {
 	AwsMap* pGetItem = OnGetItemReq(udwIdxNo, bConsistentRead, bReturnConsumedCapacity);
@@ -675,12 +546,12 @@ int TbNotic_push_uid::OnGetItemReq(string& sPostData, unsigned int udwIdxNo,
 	return 0;
 }
 
-int TbNotic_push_uid::OnGetItemRsp(const Json::Value& item)
+int TbDecoration::OnGetItemRsp(const Json::Value& item)
 {
 	return OnResponse(item);
 }
 
-AwsMap* TbNotic_push_uid::OnPutItemReq(
+AwsMap* TbDecoration::OnPutItemReq(
 	const ExpectedDesc& expected_desc, int dwReturnValuesType, bool bReturnConsumedCapacity)
 {
 	oJsonWriter.omitEndingLineFeed();
@@ -698,35 +569,16 @@ AwsMap* TbNotic_push_uid::OnPutItemReq(
 		pPutItem->AddValue("/ReturnValues", ReturnValuesType2Str(dwReturnValuesType));
 	}
 	pPutItem->AddValue("/Item/uid/N", m_nUid);
+	pPutItem->AddValue("/Item/open_time/N", m_nOpen_time);
+	if (!m_jSeries_list.empty())
+	{
+				pPutItem->AddValue("/Item/series_list/S", JsonEncode(oJsonWriter.write(m_jSeries_list), sJsonEncode));
+	}
+	if (!m_jDecoration_list.empty())
+	{
+				pPutItem->AddValue("/Item/decoration_list/S", JsonEncode(oJsonWriter.write(m_jDecoration_list), sJsonEncode));
+	}
 	pPutItem->AddValue("/Item/seq/N", m_nSeq);
-	pPutItem->AddValue("/Item/did/N", m_nDid);
-	if (!m_sDe.empty())
-	{
-		pPutItem->AddValue("/Item/de/S", JsonEncode(m_sDe, sJsonEncode));
-	}
-	if (!m_sApns_token.empty())
-	{
-		pPutItem->AddValue("/Item/apns_token/S", JsonEncode(m_sApns_token, sJsonEncode));
-	}
-	pPutItem->AddValue("/Item/apns_num/N", m_nApns_num);
-	pPutItem->AddValue("/Item/utime/N", m_nUtime);
-	if (!m_sIdfa.empty())
-	{
-		pPutItem->AddValue("/Item/idfa/S", JsonEncode(m_sIdfa, sJsonEncode));
-	}
-	if (!m_sPlatform.empty())
-	{
-		pPutItem->AddValue("/Item/platform/S", JsonEncode(m_sPlatform, sJsonEncode));
-	}
-	pPutItem->AddValue("/Item/lang/N", m_nLang);
-	if (!m_jApns_switch.empty())
-	{
-				pPutItem->AddValue("/Item/apns_switch/S", JsonEncode(oJsonWriter.write(m_jApns_switch), sJsonEncode));
-	}
-	if (!m_sArn.empty())
-	{
-		pPutItem->AddValue("/Item/arn/S", JsonEncode(m_sArn, sJsonEncode));
-	}
 	ostringstream oss;
 	for (unsigned int i = 0; i < expected_desc.vecExpectedItem.size(); ++i)
 	{
@@ -757,7 +609,7 @@ AwsMap* TbNotic_push_uid::OnPutItemReq(
 	return pPutItem;
 }
 
-int TbNotic_push_uid::OnPutItemReq(string& sPostData,
+int TbDecoration::OnPutItemReq(string& sPostData,
 	const ExpectedDesc& expected_desc, int dwReturnValuesType, bool bReturnConsumedCapacity)
 {
 	++m_nSeq;
@@ -769,12 +621,12 @@ int TbNotic_push_uid::OnPutItemReq(string& sPostData,
 	return 0;
 }
 
-int TbNotic_push_uid::OnPutItemRsp(const Json::Value& item)
+int TbDecoration::OnPutItemRsp(const Json::Value& item)
 {
 	return OnResponse(item);
 }
 
-int TbNotic_push_uid::OnResponse(const Json::Value& item)
+int TbDecoration::OnResponse(const Json::Value& item)
 {
 	oJsonWriter.omitEndingLineFeed();
 	int dwResLen = 0;
@@ -788,69 +640,37 @@ int TbNotic_push_uid::OnResponse(const Json::Value& item)
 			m_nUid = strtoll(item["uid"]["N"].asString().c_str(), NULL, 10);
 			continue;
 		}
-		if (vecMembers[i] == "seq")
+		if (vecMembers[i] == "open_time")
 		{
-			m_nSeq = strtoll(item["seq"]["N"].asString().c_str(), NULL, 10);
+			m_nOpen_time = strtoll(item["open_time"]["N"].asString().c_str(), NULL, 10);
 			continue;
 		}
-		if (vecMembers[i] == "did")
+		if (vecMembers[i] == "series_list")
 		{
-			m_nDid = strtoll(item["did"]["N"].asString().c_str(), NULL, 10);
-			continue;
-		}
-		if (vecMembers[i] == "de")
-		{
-			m_sDe = item["de"]["S"].asString();
-			continue;
-		}
-		if (vecMembers[i] == "apns_token")
-		{
-			m_sApns_token = item["apns_token"]["S"].asString();
-			continue;
-		}
-		if (vecMembers[i] == "apns_num")
-		{
-			m_nApns_num = strtoll(item["apns_num"]["N"].asString().c_str(), NULL, 10);
-			continue;
-		}
-		if (vecMembers[i] == "utime")
-		{
-			m_nUtime = strtoll(item["utime"]["N"].asString().c_str(), NULL, 10);
-			continue;
-		}
-		if (vecMembers[i] == "idfa")
-		{
-			m_sIdfa = item["idfa"]["S"].asString();
-			continue;
-		}
-		if (vecMembers[i] == "platform")
-		{
-			m_sPlatform = item["platform"]["S"].asString();
-			continue;
-		}
-		if (vecMembers[i] == "lang")
-		{
-			m_nLang = strtoll(item["lang"]["N"].asString().c_str(), NULL, 10);
-			continue;
-		}
-		if (vecMembers[i] == "apns_switch")
-		{
-			if (FALSE == oJsonReader.parse(item["apns_switch"]["S"].asString(),m_jApns_switch))
+			if (FALSE == oJsonReader.parse(item["series_list"]["S"].asString(),m_jSeries_list))
 			{
-				m_jApns_switch = Json::Value(Json::nullValue);
+				m_jSeries_list = Json::Value(Json::nullValue);
 			}
 			continue;
 		}
-		if (vecMembers[i] == "arn")
+		if (vecMembers[i] == "decoration_list")
 		{
-			m_sArn = item["arn"]["S"].asString();
+			if (FALSE == oJsonReader.parse(item["decoration_list"]["S"].asString(),m_jDecoration_list))
+			{
+				m_jDecoration_list = Json::Value(Json::nullValue);
+			}
+			continue;
+		}
+		if (vecMembers[i] == "seq")
+		{
+			m_nSeq = strtoll(item["seq"]["N"].asString().c_str(), NULL, 10);
 			continue;
 		}
 	}
 	return 0;
 }
 
-TINT64 TbNotic_push_uid::GetSeq()
+TINT64 TbDecoration::GetSeq()
 {
 	return m_nSeq;
 }

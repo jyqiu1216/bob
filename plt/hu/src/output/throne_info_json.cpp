@@ -151,6 +151,15 @@ TVOID CThroneInfoJson::GenThroneJson(SSession* pstSession, Json::Value& rJson)
     CCommJson::GenTroopJson(&stReinForceTroop, jOneThrone["total_troop"]);
 
     CCommJson::GenTitleInfo(&pstSession->m_stTitleInfoList, ptbThrone, jOneThrone["title_info"]);
+
+    if (ptbThrone->m_jRank_info.isArray())
+    {
+        jOneThrone["rank_info"] = ptbThrone->m_jRank_info;
+    }
+    else
+    {
+        jOneThrone["rank_info"] = Json::Value(Json::arrayValue);
+    }
 }
 
 TVOID CThroneInfoJson::GenTitleJson(SSession* pstSession, Json::Value& rJson)

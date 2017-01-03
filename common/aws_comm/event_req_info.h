@@ -12,6 +12,7 @@ enum ERequestType
     EN_REQUEST_TYPE__GET_INFO = 2,
     EN_REQUEST_TYPE__GET_ALL_INFO = 3,
     EN_REQUEST_TYPE__GEN_HISTORY_INFO = 4,
+    EN_REQUEST_TYPE__SEND_EVENT_SCORE = 6,
 };
 
 struct EventReqInfo
@@ -71,7 +72,7 @@ struct EventReqInfo
 
     }
 
-    void SetVal(TUINT32 udwSid, TUINT32 udwUid, const string &sUname, TUINT64 uddwAlid,
+    void SetVal(TUINT32 udwSid, TUINT32 udwUid, const string &sUname, const string &sAlNickName, TUINT64 uddwAlid,
         TUINT32 udwScoreType, TUINT32 udwScore, TUINT32 udwScoreId, TUINT32 udwReqType, TUINT32 udwAlPos = 1, TUINT32 udwTrialLv = 0, TUINT32 udwIndex = 0)
     {
         Json::Value rEventJson = Json::Value(Json::objectValue);
@@ -79,6 +80,7 @@ struct EventReqInfo
         rEventJson["sid"] = udwSid;
         rEventJson["uid"] = udwUid;
         rEventJson["uname"] = sUname;
+        rEventJson["alnick"] = sAlNickName;
         rEventJson["alid"] = uddwAlid;
         rEventJson["score_type"] = udwScoreType;
         rEventJson["score"] = udwScore;
@@ -97,7 +99,7 @@ struct EventReqInfo
 
     //获取主题活动
     void SetVal(TUINT32 udwSid, TUINT32 udwUid, TUINT32 udwAlid, const string &sUname, const string &sAlNickName, 
-                TUINT32 udwTrialLv, TUINT32 udwIsTheme, TUINT32 udwReqType, TUINT32 udwIndex)
+                TUINT32 udwTrialLv, TUINT32 udwLang, TUINT32 udwIsTheme, TUINT32 udwReqType, TUINT32 udwIndex)
     {
         Json::Value rEventJson = Json::Value(Json::objectValue);
         rEventJson["sid"] = udwSid;
@@ -106,6 +108,7 @@ struct EventReqInfo
         rEventJson["alid"] = udwAlid;
         rEventJson["alnick"] = sAlNickName;
         rEventJson["trial_lv"] = udwTrialLv;
+        rEventJson["lang"] = udwLang;
         rEventJson["request_type"] = udwReqType;
 
         Json::FastWriter rEventWriter;
@@ -118,11 +121,33 @@ struct EventReqInfo
     }
 
     //获取主题活动历史
-    void SetVal(TUINT32 udwSid, TUINT32 udwUid, TUINT32 udwIsTheme, TUINT32 udwReqType, TUINT32 udwIndex)
+    void SetVal(TUINT32 udwSid, TUINT32 udwUid, TUINT32 udwLang, TUINT32 udwIsTheme, TUINT32 udwReqType, TUINT32 udwIndex)
     {
         Json::Value rEventJson = Json::Value(Json::objectValue);
         rEventJson["sid"] = udwSid;
         rEventJson["uid"] = udwUid;
+        rEventJson["lang"] = udwLang;
+        rEventJson["request_type"] = udwReqType;
+
+        Json::FastWriter rEventWriter;
+        rEventWriter.omitEndingLineFeed();
+
+        m_sReqContent = rEventWriter.write(rEventJson);
+        m_udwIdxNo = udwIndex;
+        m_udwRequestType = udwReqType;
+        m_udwIsTheme = udwIsTheme;
+    }
+
+    //赠送主题活动分数
+    void SetVal(TUINT32 udwSid, TUINT32 udwUid, const string &sUname, TINT64 ddwAlid, TUINT32 udwTuid, TINT64 ddwScore, TUINT32 udwReqType, TUINT32 udwIsTheme, TUINT32 udwIndex)
+    {
+        Json::Value rEventJson = Json::Value(Json::objectValue);
+        rEventJson["sid"] = udwSid;
+        rEventJson["uid"] = udwUid;
+        rEventJson["alid"] = ddwAlid;
+        rEventJson["uname"] = sUname;
+        rEventJson["to_uid"] = udwTuid;
+        rEventJson["score"] = ddwScore;
         rEventJson["request_type"] = udwReqType;
 
         Json::FastWriter rEventWriter;

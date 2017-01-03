@@ -68,6 +68,32 @@ TVOID CMsgBase::SendOperateMail(TINT64 ddwTargetUid, TINT32 dwDocId, TUINT32 udw
     CMsgBase::SendDelaySystemMsg(szScriptStr);
 }
 
+TVOID CMsgBase::SendOperateMail(TINT64 ddwTargetUid, TINT32 dwDocId, TUINT32 udwSid, TINT32 dwSender, TINT32 dwJmpType,
+    const TCHAR *szTitle, const TCHAR *szContent, const TCHAR* szExtraContent, const TCHAR* szReward)
+{
+    const TINT32 k_tmp_len = 10240;
+    TCHAR szScriptStr[k_tmp_len];
+
+    //#"$1"  sid
+    //#"$2"  send type
+    //#"$3"  tid
+    //#"$4"  title
+    //#"$5"  docid
+    //#"$6"  content
+    //#"$7"  extra content
+    //#"$8"  displayclass sender
+    //#"$9"  reward
+    //#"$10"  jump type
+    //#详细见接口文档
+
+    TCHAR szJsonBuff[k_tmp_len];
+    CHttpUtils::url_encode(szContent, szJsonBuff, k_tmp_len);
+    szJsonBuff[k_tmp_len - 1] = '\0';
+    sprintf(szScriptStr, "./send_operate_mail.sh \"%u\" \"%d\" \"%ld\" \"%s\" \"%d\" \"%s\" \"%s\" \"%d\" \"%s\" \"%d\"", 
+        udwSid, EN_MAIL_SEND_TYPE_SYSTEM_TO_PLAYERS, ddwTargetUid, szTitle, dwDocId, szContent, szExtraContent, dwSender, szReward, dwJmpType);
+    CMsgBase::SendDelaySystemMsg(szScriptStr);
+}
+
 TVOID CMsgBase::SendOperateMail(TINT64 ddwTargetUid, TINT32 dwDocId, TUINT32 udwSid, TINT32 dwDisplayClass, const TCHAR *szContent, const TCHAR* szExtraContent, const TCHAR* szReward)
 {
     const TINT32 k_tmp_len = 2048;
@@ -86,7 +112,7 @@ TVOID CMsgBase::SendOperateMail(TINT64 ddwTargetUid, TINT32 dwDocId, TUINT32 udw
     //#详细见接口文档
     TCHAR szJsonBuff[4096];
     CHttpUtils::url_encode(szExtraContent, szJsonBuff, 4096);
-    szJsonBuff[4096] = '\0';
+    szJsonBuff[4095] = '\0';
     sprintf(szScriptStr, "./send_operate_mail.sh \"%u\" \"%d\" \"%ld\" \"%s\" \"%d\" \"%s\" \"%s\" \"%d\" \"%s\"",
         udwSid, EN_MAIL_SEND_TYPE_SYSTEM_TO_PLAYERS, ddwTargetUid, pszTitle, dwDocId, szContent,
         szJsonBuff, dwDisplayClass, szReward);
@@ -761,6 +787,63 @@ TVOID CMsgBase::ClearNoPlayerMap(TINT64 ddwUid, TINT64 ddwSid, TINT64 ddwPos)
         ddwUid, ddwSid, ddwPos);
 
     TSE_LOG_DEBUG(CGameInfo::GetInstance()->m_poLog, ("ClearNoPlayerMap: delay msg content:%s ", szMsg));
+
+    CMsgBase::SendDelaySystemMsg(szMsg);
+    return;
+}
+
+TVOID CMsgBase::GiveGift(TINT64 ddwUid, TUINT32 *udwTargetUidList, TUINT32 udwTargetNum, TINT64 ddwGiftId, const string& szContent, SSpGlobalRes *pstReward)
+{
+    if (ddwUid == 0 || udwTargetNum == 0)
+    {
+        return;
+    }
+
+    ostringstream oss;
+    for (TUINT32 udwIdx = 0; udwIdx < udwTargetNum; udwIdx++)
+    {
+        if (udwIdx != 0)
+        {
+            oss << ":";
+        }
+        oss << udwTargetUidList[udwIdx];
+    }
+    Json::Value jReward = Json::Value(Json::arrayValue);
+    for (TUINT32 udwIdx = 0; udwIdx < pstReward->udwTotalNum; udwIdx++)
+    {
+        jReward[udwIdx].append(pstReward->aRewardList[udwIdx].udwType);
+        jReward[udwIdx].append(pstReward->aRewardList[udwIdx].udwId);
+        jReward[udwIdx].append(pstReward->aRewardList[udwIdx].udwNum);
+    }
+    Json::FastWriter writer;
+    writer.omitEndingLineFeed();
+
+    TCHAR szEnContent[20480] = { 0 };
+    CHttpUtils::url_encode(szContent.c_str(), szEnContent, 20480);
+
+    TCHAR szMsg[20480];
+    sprintf(szMsg, "./give_gift.sh %ld %ld \"%s\" \"%s\" \"%s\"",
+        ddwUid, ddwGiftId, oss.str().c_str(), szEnContent, writer.write(jReward).c_str());
+
+    TSE_LOG_DEBUG(CGameInfo::GetInstance()->m_poLog, ("GiveGift: delay msg content:%s ", szMsg));
+
+    CMsgBase::SendDelaySystemMsg(szMsg);
+    return;
+}
+
+TVOID CMsgBase::PickUpGift(TINT64 ddwUid, TINT64 ddwSender, TINT64 ddwGiftId, TINT64 ddwMailId)
+{
+    if (ddwUid == 0 || ddwSender == 0)
+    {
+        return;
+    }
+
+    TCHAR szMsg[1024];
+
+    sprintf(szMsg, "./pick_up_gift.sh %ld %ld %ld %ld",
+        ddwUid, ddwSender, ddwGiftId, ddwMailId);
+
+    TSE_LOG_DEBUG(CGameInfo::GetInstance()->m_poLog, ("PickUpGift: delay msg content:%s ", szMsg));
 
     CMsgBase::SendDelaySystemMsg(szMsg);
     return;

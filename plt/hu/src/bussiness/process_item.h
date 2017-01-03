@@ -17,6 +17,8 @@ public:
     static TINT32 ProcessCmd_ItemBuyAndUse(SSession *pstSession, TBOOL& bNeedResponse);
 
     static TINT32 ProcessCmd_OpenAllChest(SSession *pstSession, TBOOL& bNeedResponse);
+    // function  ===> 获得领主头像
+    static TINT32 ProcessCmd_GetLordImage(SSession *pstSession, TBOOL& bNeedResponse);
 
     /*************************单独接口使用特殊道具相关的操作******************************/  
     // function  ===> 使用随机移城道具(todo: 统一使用以上三个接口是最好的)
@@ -25,6 +27,11 @@ public:
     static TINT32 ProcessCmd_MoveCity(SSession *pstSession, TBOOL &bNeedResponse);
 
     static TINT32 ProcessCmd_MoveCityPrepare(SSession *pstSession, TBOOL &bNeedResponse);
+    // function  ===> 解锁vip阶段
+    static TINT32 ProcessCmd_UnlockVipStage(SSession *pstSession, TBOOL& bNeedResponse);
+    // function  ===> vip开箱子
+    static TINT32 ProcessCmd_VipOpenChest(SSession *pstSession, TBOOL& bNeedResponse);
+
 };
 
 

@@ -17,6 +17,10 @@ enum ECollectQuestType
 class CQuestLogic
 {
 public:
+    static TVOID CheckPlayerTimeQuestValid(SUserInfo *pstUser, const char* strPos);
+    static TBOOL CheckQuestValid(SQuestNode* pstQuestNode, TBOOL bResetInvalid, const char* strFlag, const char* strType, TUINT32 udwSeq, TINT64 ddwUid);
+    static TBOOL IsValidQuest(SQuestComm *pstQuestItem);
+    static TVOID ResetInvalidQuest(SQuestComm *pstQuestItem);
 
     static TVOID CheckTimeQuestFinish(SUserInfo *pstUser, SCityInfo *pstCity,TbQuest *pstQuest);
     

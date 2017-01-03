@@ -794,6 +794,18 @@ TINT32 CProcessSelfSystem::Processcmd_SetVipLevel(SSession* pstSession, TBOOL &b
     TINT32 dwLevel = atoi(pstSession->m_stReqParam.m_szKey[0]);
 
     pstSession->m_stUserInfo.m_tbPlayer.Set_Vip_point(CPlayerBase::GetRawVipLevelPoint(dwLevel));
+    pstSession->m_stUserInfo.m_tbPlayer.Set_Vip_stage(CPlayerBase::GetRawVipStage(dwLevel));
+    return 0;
+}
+
+TINT32 CProcessSelfSystem::Processcmd_SetVipPoint(SSession* pstSession, TBOOL &bNeedResponse)
+{
+    TINT64 ddwPoint = strtoll(pstSession->m_stReqParam.m_szKey[0], NULL, 10);
+    if (ddwPoint > CPlayerBase::GetMaxVipPoint())
+    {
+        ddwPoint = CPlayerBase::GetMaxVipPoint();
+    }
+    pstSession->m_stUserInfo.m_tbPlayer.Set_Vip_point(ddwPoint);
 
     return 0;
 }
@@ -4384,7 +4396,7 @@ TINT32 CProcessSelfSystem::Processcmd_GenPeaceTime(SSession* pstSession, TBOOL& 
     {
         pstUser->m_tbPlayer.m_nStatus = pstUser->m_tbPlayer.m_nStatus ^ EN_CITY_STATUS__ON_SPECIAL_WILD;
     }
-    CItemLogic::UseItem(pstUser, pstCity, 19, -1, 1, -1, FALSE);
+    CItemLogic::UseItem(pstUser, pstCity, 375, -1, 1, -1, FALSE);
     pstUser->m_tbPlayer.Set_Status(ddwTmpStatus | EN_CITY_STATUS__AVOID_WAR);
 
     for (TUINT32 udwIdx = 0; udwIdx < pstUser->m_udwWildNum; udwIdx++)
@@ -4393,16 +4405,20 @@ TINT32 CProcessSelfSystem::Processcmd_GenPeaceTime(SSession* pstSession, TBOOL& 
         if (ptbWild->m_nUid == ptbPlayer->m_nUid
             && ptbWild->m_nType == EN_WILD_TYPE__CAMP)
         {
-            if ((EN_CITY_STATUS__AVOID_WAR & ptbWild->m_nStatus)
-                || ptbWild->m_nTime_end > CTimeUtils::GetUnixTime())
-            {
-                    continue;
-            }
             ptbWild->Set_Status(ptbWild->m_nStatus | EN_CITY_STATUS__AVOID_WAR);
-            ptbWild->Set_Time_end(CTimeUtils::GetUnixTime() + 3600 * 2);
+            ptbWild->Set_Time_end(CTimeUtils::GetUnixTime() + 3600 * 24 * 5);
             pstUser->m_aucWildFlag[udwIdx] = EN_TABLE_UPDT_FLAG__CHANGE;
         }
     }
+
+    return 0;
+}
+
+TINT32 CProcessSelfSystem::Processcmd_SetIapPromoteNum(SSession* pstSession, TBOOL& bNeedResponse)
+{
+    TUINT32 udwNum = atoi(pstSession->m_stReqParam.m_szKey[0]);
+
+    pstSession->m_stUserInfo.m_tbLogin.Set_Iap_promote_gem_num(udwNum);
 
     return 0;
 }

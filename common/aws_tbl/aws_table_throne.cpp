@@ -451,6 +451,19 @@ AwsMap* TbThrone::OnUpdateItemReq(
 			}
 			continue;
 		}
+		if (TbTHRONE_FIELD_RANK_INFO == iter->first)
+		{
+			if (!m_jRank_info.empty())
+			{
+				pUpdateItem->AddValue("/AttributeUpdates/rank_info/Value/S", JsonEncode(oJsonWriter.write(m_jRank_info), sJsonEncode));
+				pUpdateItem->AddValue("/AttributeUpdates/rank_info/Action", "PUT");
+			}
+			else
+			{
+				pUpdateItem->AddValue("/AttributeUpdates/rank_info/Action", "DELETE");
+			}
+			continue;
+		}
 		assert(0);
 	}
 	if(bUpdateFlag)
@@ -542,6 +555,10 @@ AwsMap* TbThrone::OnWriteItemReq(int dwActionType)
 		pItem->AddValue("/reinforce_troop_force/N", m_nReinforce_troop_force);
 		pItem->AddValue("/occupy_time/N", m_nOccupy_time);
 		pItem->AddValue("/owner_cid/N", m_nOwner_cid);
+		if (!m_jRank_info.empty())
+		{
+				pItem->AddValue("/AttributeUpdates/rank_info/Value/S", JsonEncode(oJsonWriter.write(m_jRank_info), sJsonEncode));
+		}
 	}
 	else if (WRITE_ACTION_TYPE_DELETE == dwActionType)
 	{
@@ -589,6 +606,10 @@ void TbThrone::OnWriteItemReq(AwsMap* pWriteItem, int dwActionType)
 		pItem->AddValue("/reinforce_troop_force/N", m_nReinforce_troop_force);
 		pItem->AddValue("/occupy_time/N", m_nOccupy_time);
 		pItem->AddValue("/owner_cid/N", m_nOwner_cid);
+		if (!m_jRank_info.empty())
+		{
+				pItem->AddValue("/AttributeUpdates/rank_info/Value/S", JsonEncode(oJsonWriter.write(m_jRank_info), sJsonEncode));
+		}
 	}
 	else if (WRITE_ACTION_TYPE_DELETE == dwActionType)
 	{
@@ -784,6 +805,10 @@ AwsMap* TbThrone::OnPutItemReq(
 	pPutItem->AddValue("/Item/reinforce_troop_force/N", m_nReinforce_troop_force);
 	pPutItem->AddValue("/Item/occupy_time/N", m_nOccupy_time);
 	pPutItem->AddValue("/Item/owner_cid/N", m_nOwner_cid);
+	if (!m_jRank_info.empty())
+	{
+				pPutItem->AddValue("/Item/rank_info/S", JsonEncode(oJsonWriter.write(m_jRank_info), sJsonEncode));
+	}
 	ostringstream oss;
 	for (unsigned int i = 0; i < expected_desc.vecExpectedItem.size(); ++i)
 	{
@@ -931,6 +956,14 @@ int TbThrone::OnResponse(const Json::Value& item)
 		if (vecMembers[i] == "owner_cid")
 		{
 			m_nOwner_cid = strtoll(item["owner_cid"]["N"].asString().c_str(), NULL, 10);
+			continue;
+		}
+		if (vecMembers[i] == "rank_info")
+		{
+			if (FALSE == oJsonReader.parse(item["rank_info"]["S"].asString(),m_jRank_info))
+			{
+				m_jRank_info = Json::Value(Json::nullValue);
+			}
 			continue;
 		}
 	}

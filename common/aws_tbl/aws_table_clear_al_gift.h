@@ -1,31 +1,32 @@
-#ifndef _AWS_TABLE_NOTIC_PUSH_TOKEN_H_
-#define _AWS_TABLE_NOTIC_PUSH_TOKEN_H_
+#ifndef _AWS_TABLE_CLEAR_AL_GIFT_H_
+#define _AWS_TABLE_CLEAR_AL_GIFT_H_
 
 #include "aws_table_common.h"
 #include "field_property.h"
 
-#define EN_AWS_TABLE_NOTIC_PUSH_TOKEN "notic_push_token"
+#define EN_AWS_TABLE_CLEAR_AL_GIFT "clear_al_gift"
 
-enum ETbNotic_push_tokenField
+enum ETbClear_al_giftField
 {
-	TbNOTIC_PUSH_TOKEN_FIELD_APNS_TOKEN = 0,
-	TbNOTIC_PUSH_TOKEN_FIELD_UID = 1,
-	TbNOTIC_PUSH_TOKEN_FIELD_SEQ = 2,
-	TbNOTIC_PUSH_TOKEN_FIELD_UTIME = 3,
+	TbCLEAR_AL_GIFT_FIELD_UID = 0,
+	TbCLEAR_AL_GIFT_FIELD_CLEAR_AL_GIFT = 1,
+	TbCLEAR_AL_GIFT_FIELD_SEQ = 2,
 };
 
-enum ETbNotic_push_tokenOpenType
+enum ETbClear_al_giftOpenType
 {
-	ETbNOTIC_PUSH_TOKEN_OPEN_TYPE_PRIMARY = 0,
+	ETbCLEARALGIFT_OPEN_TYPE_PRIMARY = 0,
 };
 
-class TbNotic_push_token : public AwsTable
+#define	TBCLEAR_AL_GIFT_CLEAR_AL_GIFT_MAX_NUM	400
+typedef	BinBuf<TINT64, TBCLEAR_AL_GIFT_CLEAR_AL_GIFT_MAX_NUM>		TbClear_al_gift_Clear_al_gift;
+
+class TbClear_al_gift : public AwsTable
 {
 public:
-	string m_sApns_token;
 	TINT64 m_nUid;
+	TbClear_al_gift_Clear_al_gift m_bClear_al_gift;
 	TINT64 m_nSeq;
-	TINT64 m_nUtime;
 
 public:
 	static TableDesc oTableDesc;
@@ -34,36 +35,26 @@ public:
 	static int Init(const string& sConfFile, const string strProjectName);
 
 public:
-	TbNotic_push_token():AwsTable(&oTableDesc)
+	TbClear_al_gift():AwsTable(&oTableDesc)
 	{
 		Reset();
 	}
-	~TbNotic_push_token()
+	~TbClear_al_gift()
 	{}
 	void Reset()
 	{
-		m_sApns_token = "";
 		m_nUid = 0;
+		m_bClear_al_gift.Reset();
 		m_nSeq = 0;
-		m_nUtime = 0;
 		ClearFlag();
 	};
-	const string& Get_Apns_token()
-	{
-		return m_sApns_token;
-	}
-	void Set_Apns_token(const string& sApns_token)
-	{
-		m_sApns_token = sApns_token;
-	}
 	const TINT64& Get_Uid()
 	{
 		return m_nUid;
 	}
-	void Set_Uid(const TINT64& nUid, int dwActionType=UPDATE_ACTION_TYPE_PUT)
+	void Set_Uid(const TINT64& nUid)
 	{
 		m_nUid = nUid;
-		m_mFlag[TbNOTIC_PUSH_TOKEN_FIELD_UID] = dwActionType;
 	}
 	const TINT64& Get_Seq()
 	{
@@ -72,16 +63,7 @@ public:
 	void Set_Seq(const TINT64& nSeq, int dwActionType=UPDATE_ACTION_TYPE_PUT)
 	{
 		m_nSeq = nSeq;
-		m_mFlag[TbNOTIC_PUSH_TOKEN_FIELD_SEQ] = dwActionType;
-	}
-	const TINT64& Get_Utime()
-	{
-		return m_nUtime;
-	}
-	void Set_Utime(const TINT64& nUtime, int dwActionType=UPDATE_ACTION_TYPE_PUT)
-	{
-		m_nUtime = nUtime;
-		m_mFlag[TbNOTIC_PUSH_TOKEN_FIELD_UTIME] = dwActionType;
+		m_mFlag[TbCLEAR_AL_GIFT_FIELD_SEQ] = dwActionType;
 	}
 	//Scan命令使用,返回完整的请求包
 	AwsMap* OnScanReq(unsigned int udwIdxNo, bool bHasStartKey = false, bool bReturnConsumedCapacity = true,

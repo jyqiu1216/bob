@@ -207,9 +207,6 @@ TBOOL CGlobalResLogic::HaveEnoughSpGlobalsRes(SUserInfo *pstUser, SCityInfo* pst
     return TRUE;
 }
 
-
-
-
 TINT32 CGlobalResLogic::AddGlobalRes(SUserInfo *pstUser, SCityInfo* pstCity, TUINT32 udwType, TUINT32 udwItemId, TUINT32 udwItemNum,TUINT32 udwSecClas,
     TINT64 ddwTargetId /* =-1 */, TUINT32 udwSpItemId, SAttrInfo *pstAttrInfo)
 {
@@ -321,6 +318,12 @@ TINT32 CGlobalResLogic::AddGlobalRes(SUserInfo *pstUser, SCityInfo* pstCity, TUI
         break;
     case EN_GLOBALRES_TYPE_EQUIP:
         dwRetcode = CBackpack::AddNormalEquip(pstUser, udwItemId / 10, udwItemId % 10, udwItemNum);
+        break;
+    case EN_GLOBALRES_TYPE_LORD_IMAGE:
+        dwRetcode = CPlayerBase::AddLordImage(&pstUser->m_tbLordImage, udwItemId);
+        break;
+    case EN_GLOBALRES_TYPE_DECORATION:
+        dwRetcode = CPlayerBase::AddDecoration(&pstUser->m_tbDecoration, udwItemId, udwItemNum);
         break;
     default:
         dwRetcode = -1;

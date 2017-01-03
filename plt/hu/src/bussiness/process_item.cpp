@@ -28,7 +28,7 @@ TINT32 CProcessItem::ProcessCmd_ItemUse(SSession *pstSession, TBOOL& bNeedRespon
     SUserInfo *pstUser = &pstSession->m_stUserInfo;
     SCityInfo *pstCity = &pstUser->m_stCityInfo;
     TbPlayer *ptbPlayer = &pstUser->m_tbPlayer;
-
+    TINT32 dwIsDataCenter = 0;
     TUINT32 udwItemId = atoi(pstSession->m_stReqParam.m_szKey[0]);
     TUINT64 uddwTargetId = strtoull(pstSession->m_stReqParam.m_szKey[1], NULL, 10);
     TUINT32 udwSecondClass = strtoull(pstSession->m_stReqParam.m_szKey[2], NULL, 10);
@@ -67,13 +67,20 @@ TINT32 CProcessItem::ProcessCmd_ItemUse(SSession *pstSession, TBOOL& bNeedRespon
     }
 
 
-    // 水晶箱子和材料箱子除外使用物品逻辑
-    if((EN_ITEM_FUNC_TYPE_CRYSTAL != CItemBase::GetItemFuncFromGameJson(udwItemId)
-       && EN_ITEM_FUNC_TYPE_MATERIALS != CItemBase::GetItemFuncFromGameJson(udwItemId)
-       && EN_ITEM_FUNC_TYPE_CHALLENGER != CItemBase::GetItemFuncFromGameJson(udwItemId)
-       && EN_ITEM_FUNC_TYPE_MONSTER != CItemBase::GetItemFuncFromGameJson(udwItemId))
-       || CItemLogic::IsChestLottery(udwItemId))
+    TCHAR szItemId[64];
+    sprintf(szItemId, "%u", udwItemId);
+    CGameInfo *pstGameInfo = CGameInfo::GetInstance();
+    if (pstGameInfo->m_oJsonRoot["game_item"].isMember(szItemId))
     {
+        dwIsDataCenter = pstGameInfo->m_oJsonRoot["game_item"][szItemId]["a21"].asInt();
+    }
+    //判断是否走运营
+    if (((EN_ITEM_FUNC_TYPE_CRYSTAL != CItemBase::GetItemFuncFromGameJson(udwItemId)
+        && EN_ITEM_FUNC_TYPE_MATERIALS != CItemBase::GetItemFuncFromGameJson(udwItemId)
+        && EN_ITEM_FUNC_TYPE_CHALLENGER != CItemBase::GetItemFuncFromGameJson(udwItemId)
+        && EN_ITEM_FUNC_TYPE_MONSTER != CItemBase::GetItemFuncFromGameJson(udwItemId))
+        || CItemLogic::IsChestLottery(udwItemId)) && dwIsDataCenter == 0)
+    {   //不走运营，从game.json里面取
         TBOOL bIsKing = FALSE;
         if (pstSession->m_tbThrone.m_nAlid > 0 && pstSession->m_tbThrone.m_nOwner_id == ptbPlayer->m_nUid)
         {
@@ -264,6 +271,7 @@ TINT32 CProcessItem::ProcessCmd_ItemUse(SSession *pstSession, TBOOL& bNeedRespon
 
     }
     // 水晶箱子和材料箱子的使用逻辑
+    //从data center获取
     else   
     {
         if(EN_COMMAND_STEP__INIT == pstSession->m_udwCommandStep)
@@ -1505,47 +1513,95 @@ TINT32 CProcessItem::ProcessCmd_OpenAllChest(SSession *pstSession, TBOOL& bNeedR
                     }
                 }
 
-
-                if(MAX_SP_REWARD_ITEM_NUM < stRefreshData.m_stChestRsp.m_vecReward.size()
-                    || 0 >= stRefreshData.m_stChestRsp.m_vecReward.size())
+                /*if (MAX_SP_REWARD_ITEM_NUM < stRefreshData.m_stChestRsp.m_vecReward.size()
+                || 0 >= stRefreshData.m_stChestRsp.m_vecReward.size())*/
+                if (0 >= stRefreshData.m_stChestRsp.m_vecReward.size())
                 {
                     pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__REQ_PARAM_ERROR;
                     TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessCmd_OpenAllChest: chest reward size is over. [size=%ld] [seq=%u]", \
-                                                            stRefreshData.m_stChestRsp.m_vecReward.size(), \
-                                                            pstUser->m_udwBSeqNo));
+                        stRefreshData.m_stChestRsp.m_vecReward.size(), \
+                        pstUser->m_udwBSeqNo));
                     return -8;
                 }
-
-
-                SSpGlobalRes stGlobalRes;
-                stGlobalRes.Reset();
-
-                for(TINT32 dwIdx = 0; dwIdx < stRefreshData.m_stChestRsp.m_vecReward.size(); ++dwIdx)
+                //奖励汇总
+                Json::Value jReward = Json::Value(Json::objectValue);
+                string strType;
+                string strId;
+                for (TINT32 dwIdx = 0; dwIdx < stRefreshData.m_stChestRsp.m_vecReward.size(); ++dwIdx)
                 {
                     SOneGlobalRes *pstOneGlobalRes = stRefreshData.m_stChestRsp.m_vecReward[dwIdx];
-                    TSE_LOG_DEBUG(pstSession->m_poServLog, ("ProcessCmd_OpenAllChest: chest reward [type=%ld] [id=%ld] [num=%ld] [seq=%u]", \
-                                                            pstOneGlobalRes->ddwType, \
-                                                            pstOneGlobalRes->ddwId, \
-                                                            pstOneGlobalRes->ddwNum, \
-                                                            pstUser->m_udwBSeqNo));
-
-                
-                    stGlobalRes.aRewardList[dwIdx].udwType = pstOneGlobalRes->ddwType;
-                    stGlobalRes.aRewardList[dwIdx].udwId = pstOneGlobalRes->ddwId;
-                    stGlobalRes.aRewardList[dwIdx].udwNum = pstOneGlobalRes->ddwNum;
-                    ++stGlobalRes.udwTotalNum;
-                    dwRetCode = CGlobalResLogic::AddGlobalRes(pstUser, pstCity, pstOneGlobalRes->ddwType, pstOneGlobalRes->ddwId, pstOneGlobalRes->ddwNum);
-                    if (dwRetCode > 0)
+                    strType = CCommonFunc::NumToString(pstOneGlobalRes->ddwType);
+                    strId = CCommonFunc::NumToString(pstOneGlobalRes->ddwId);
+                    if (jReward.isMember(strType))
                     {
-                        pstSession->m_stCommonResInfo.m_dwRetCode = dwRetCode;
-                        return -1;
+                        if (jReward[strType].isMember(strId))
+                        {
+                            jReward[strType][strId]["num"] = jReward[strType][strId]["num"].asInt64() + pstOneGlobalRes->ddwNum;
+                        }
+                        else
+                        {
+                            jReward[strType][strId]["num"] = pstOneGlobalRes->ddwNum;
+                        }
                     }
-                    else if (dwRetCode < 0)
+                    else
                     {
-                        pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__REQ_PARAM_ERROR;
-                        return -2;
+                        jReward[strType][strId]["num"] = pstOneGlobalRes->ddwNum;
                     }
                 }
+                SSpGlobalRes stGlobalRes;
+                stGlobalRes.Reset();
+                Json::Value::Members jType = jReward.getMemberNames();
+                for (TUINT32 udwIdx = 0; udwIdx < jType.size(); udwIdx++)
+                {
+                    Json::Value::Members jId = jReward[jType[udwIdx]].getMemberNames();
+                    for (TUINT32 udwIdy = 0; udwIdy < jId.size(); udwIdy++)
+                    {
+                        stGlobalRes.aRewardList[stGlobalRes.udwTotalNum].udwType = atoi(jType[udwIdx].c_str());
+                        stGlobalRes.aRewardList[stGlobalRes.udwTotalNum].udwId = atoi(jId[udwIdy].c_str());
+                        stGlobalRes.aRewardList[stGlobalRes.udwTotalNum].udwNum = jReward[jType[udwIdx]][jId[udwIdy]]["num"].asUInt();
+                        dwRetCode = CGlobalResLogic::AddGlobalRes(pstUser, pstCity, stGlobalRes.aRewardList[stGlobalRes.udwTotalNum].udwType,
+                            stGlobalRes.aRewardList[stGlobalRes.udwTotalNum].udwId, stGlobalRes.aRewardList[stGlobalRes.udwTotalNum].udwNum);
+                        ++stGlobalRes.udwTotalNum;
+                        if (dwRetCode > 0)
+                        {
+                            pstSession->m_stCommonResInfo.m_dwRetCode = dwRetCode;
+                            return -1;
+                        }
+                        else if (dwRetCode < 0)
+                        {
+                            pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__REQ_PARAM_ERROR;
+                            return -2;
+                        }
+                    }
+                }
+
+                //SSpGlobalRes stGlobalRes;
+                //stGlobalRes.Reset();
+                //for(TINT32 dwIdx = 0; dwIdx < stRefreshData.m_stChestRsp.m_vecReward.size(); ++dwIdx)
+                //{
+                //    SOneGlobalRes *pstOneGlobalRes = stRefreshData.m_stChestRsp.m_vecReward[dwIdx];
+                //    TSE_LOG_DEBUG(pstSession->m_poServLog, ("ProcessCmd_OpenAllChest: chest reward [type=%ld] [id=%ld] [num=%ld] [seq=%u]", \
+                //                                            pstOneGlobalRes->ddwType, \
+                //                                            pstOneGlobalRes->ddwId, \
+                //                                            pstOneGlobalRes->ddwNum, \
+                //                                            pstUser->m_udwBSeqNo));
+                //
+                //    stGlobalRes.aRewardList[dwIdx].udwType = pstOneGlobalRes->ddwType;
+                //    stGlobalRes.aRewardList[dwIdx].udwId = pstOneGlobalRes->ddwId;
+                //    stGlobalRes.aRewardList[dwIdx].udwNum = pstOneGlobalRes->ddwNum;
+                //    ++stGlobalRes.udwTotalNum;
+                //    dwRetCode = CGlobalResLogic::AddGlobalRes(pstUser, pstCity, pstOneGlobalRes->ddwType, pstOneGlobalRes->ddwId, pstOneGlobalRes->ddwNum);
+                //    if (dwRetCode > 0)
+                //    {
+                //        pstSession->m_stCommonResInfo.m_dwRetCode = dwRetCode;
+                //        return -1;
+                //    }
+                //    else if (dwRetCode < 0)
+                //    {
+                //        pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__REQ_PARAM_ERROR;
+                //        return -2;
+                //    }
+                //}
                 
                 //3 cost item 
                 if (udwOpenType == 0)
@@ -1561,7 +1617,6 @@ TINT32 CProcessItem::ProcessCmd_OpenAllChest(SSession *pstSession, TBOOL& bNeedR
                 pstUser->m_udwLotteryChestItemId = udwChestId;
                 pstUser->m_udwLotteryChestItemNum = 1;
                 pstUser->m_stRewardWindow = stGlobalRes;
-
 
                 Json::Value jTmp = Json::Value(Json::objectValue);
                 jTmp["chest"] = Json::Value(Json::objectValue);
@@ -1675,4 +1730,566 @@ TINT32 CProcessItem::ProcessCmd_MoveCityPrepare( SSession *pstSession, TBOOL &bN
     }
 
     return 0;
+}
+
+TINT32 CProcessItem::ProcessCmd_GetLordImage(SSession *pstSession, TBOOL& bNeedResponse)
+{
+    TINT32 dwRetCode = 0;
+    TUINT32 udwImageId = 0;
+    SUserInfo *pstUser = &pstSession->m_stUserInfo;
+    TUINT32 udwItemId = atoi(pstSession->m_stReqParam.m_szKey[0]);
+    TUINT32 udwItemNum = 1;
+
+    if (FALSE == CItemBase::HasEnoughItem(&pstUser->m_tbBackpack, udwItemId, udwItemNum))
+    {
+        pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__ITEM_NOT_ENOUGH;
+        TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessCmd_GetLordImage: item not enough [seq=%u]", \
+            pstSession->m_stUserInfo.m_udwBSeqNo));
+        return -3;
+    }
+
+    CGameInfo *pstGameInfo = CGameInfo::GetInstance();
+    SSpGlobalRes stGlobalRes;
+    stGlobalRes.Reset();
+
+    TCHAR szItemId[64];
+    sprintf(szItemId, "%u", udwItemId);
+    if (!pstGameInfo->m_oJsonRoot["game_item"].isMember(szItemId))
+    {
+        TSE_LOG_ERROR(CGameInfo::GetInstance()->m_poLog, ("ProcessCmd_GetLordImage:game.json not include item_id=%u [ret=-2]", udwItemId));
+        return EN_RET_CODE__REQ_PARAM_ERROR;
+    }
+    //判断是否走运营
+    TINT32 dwIsDataCenter = pstGameInfo->m_oJsonRoot["game_item"][szItemId]["a21"].asInt();
+    if (dwIsDataCenter == 0)    //不走运营，直接从game.json里取,头像只能开出一个
+    {
+        dwRetCode = CItemLogic::GetItemreward(udwItemId, &stGlobalRes);
+        if (dwRetCode != 0)
+        {
+            pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__REQ_PARAM_ERROR;
+            return -3;
+        }
+        for (TUINT32 udwIdx = 0; udwIdx < stGlobalRes.udwTotalNum; udwIdx++)
+        {
+            if (stGlobalRes.aRewardList[udwIdx].udwType != EN_GLOBALRES_TYPE_LORD_IMAGE)
+            {
+                continue;
+            }
+            dwRetCode = CGlobalResLogic::AddGlobalRes(pstUser, &pstUser->m_stCityInfo,
+                stGlobalRes.aRewardList[udwIdx].udwType, stGlobalRes.aRewardList[udwIdx].udwId, stGlobalRes.aRewardList[udwIdx].udwNum);
+            if (dwRetCode > 0)
+            {
+                pstSession->m_stCommonResInfo.m_dwRetCode = dwRetCode;
+                return -1;
+            }
+            else if (dwRetCode < 0)
+            {
+                pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__REQ_PARAM_ERROR;
+                return -2;
+            }
+            udwImageId = stGlobalRes.aRewardList[udwIdx].udwId;
+            break;
+        }
+        // cost item 
+        CItemBase::CostItem(&pstUser->m_tbBackpack, udwItemId);
+        pstUser->m_stRewardWindow = stGlobalRes;
+        Json::Value jTmp = Json::Value(Json::objectValue);
+        jTmp["lord_image"] = Json::Value(Json::objectValue);
+        jTmp["lord_image"]["id"] = udwImageId;
+        string strJinfo;
+        Json::FastWriter writer;
+        writer.omitEndingLineFeed();
+        strJinfo = writer.write(jTmp);
+        TSE_LOG_DEBUG(pstSession->m_poServLog, ("ProcessCmd_GetLordImage: [type=%u] [id=%u] [num=%u] [info=%s] [seq=%u]", 
+            stGlobalRes.aRewardList[0].udwType, stGlobalRes.aRewardList[0].udwId, stGlobalRes.aRewardList[0].udwNum, strJinfo.c_str(), pstSession->m_stUserInfo.m_udwBSeqNo));
+        CCommonBase::AddRewardWindow(pstUser, pstUser->m_tbPlayer.m_nUid, EN_REWARD_WIMDOW_TYPE_LORD_IMAGE, EN_REWARD_WINDOW_GET_TYPE_OPEN_CHEST,
+            0, &stGlobalRes, FALSE, jTmp);
+        pstSession->m_udwCommandStep = EN_COMMAND_STEP__END;
+        return 0;
+    }
+    else      //从data center取
+    {
+        if (EN_COMMAND_STEP__INIT == pstSession->m_udwCommandStep)
+        {
+            pstSession->m_udwCommandStep = EN_COMMAND_STEP__1;
+            pstSession->m_udwExpectProcedure = EN_EXPECT_PROCEDURE__DATA_CENTER;
+            pstSession->ResetDataCenterReq();
+
+
+            DataCenterReqInfo* pstReq = new DataCenterReqInfo;
+            pstReq->m_udwType = EN_REFRESH_DATA_TYPE__CHEST;
+            Json::Value rDataReqJson = Json::Value(Json::objectValue);
+
+            rDataReqJson["sid"] = pstUser->m_tbLogin.m_nSid;
+            rDataReqJson["uid"] = pstUser->m_tbPlayer.m_nUid;
+            rDataReqJson["castle_lv"] = CCityBase::GetBuildingLevelByFuncType(&pstUser->m_stCityInfo, EN_BUILDING_TYPE__CASTLE);
+            rDataReqJson["request"] = Json::Value(Json::objectValue);
+            rDataReqJson["request"]["chest_id"] = udwItemId;
+            rDataReqJson["request"]["open_num"] = udwItemNum;
+
+            Json::FastWriter rEventWriter;
+            pstReq->m_sReqContent = rEventWriter.write(rDataReqJson);
+            pstSession->m_vecDataCenterReq.push_back(pstReq);
+
+            TSE_LOG_DEBUG(pstSession->m_poServLog, ("ProcessCmd_ItemUse: data center req: [type=%u] [uid=%ld][seq=%u] [json=%s]", \
+                pstReq->m_udwType, \
+                pstUser->m_tbPlayer.m_nUid, \
+                pstSession->m_udwSeqNo, \
+                pstReq->m_sReqContent.c_str()));
+            bNeedResponse = TRUE;
+            TINT32 dwRetCode = CBaseProcedure::SendDataCenterRequest(pstSession, EN_SERVICE_TYPE_DATA_CENTER_REQ);
+            if (dwRetCode == 0)
+            {
+                return 0;
+            }
+            else
+            {
+                pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__SEND_DATA_CENTER_REQ_ERR;
+                TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessCmd_ItemUse: send request to data center failed. [json=%s] [ret=%d] [seq=%u]", \
+                    pstReq->m_sReqContent.c_str(), \
+                    dwRetCode, \
+                    pstUser->m_udwBSeqNo));
+                return -5;
+            }
+
+
+        }
+
+        if (EN_COMMAND_STEP__1 == pstSession->m_udwCommandStep)
+        {
+            SRefreshData stRefreshData;
+            vector<DataCenterRspInfo*>& vecRsp = pstSession->m_vecDataCenterRsp;
+            DataCenterRspInfo *pstDataCenterRsp = NULL;
+            if (vecRsp.size() > 0)
+            {
+                stRefreshData.Reset();
+                Json::Reader jsonReader;
+                Json::Value oRspDataJson;
+                for (TUINT32 udwIdx = 0; udwIdx < vecRsp.size(); ++udwIdx)
+                {
+                    pstDataCenterRsp = vecRsp[udwIdx];
+                    if (EN_REFRESH_DATA_TYPE__CHEST == pstDataCenterRsp->m_udwType)
+                    {
+                        TSE_LOG_DEBUG(pstSession->m_poServLog, ("ProcessCmd_ItemUse: data center get rsp: [json=%s] [uid=%ld][seq=%u]",
+                            pstDataCenterRsp->m_sRspJson.c_str(), \
+                            pstUser->m_tbPlayer.m_nUid, \
+                            pstUser->m_udwBSeqNo));
+
+                        if (FALSE == jsonReader.parse(pstDataCenterRsp->m_sRspJson, oRspDataJson))
+                        {
+                            pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__PARSE_DATA_CENTER_PACKAGE_ERR;
+                            TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessCmd_ItemUse: prase rsp from data center failed. [seq=%u]", \
+                                pstUser->m_udwBSeqNo));
+                            return -6;
+                        }
+                        TINT32 dwRetCode = stRefreshData.m_stChestRsp.setVal(oRspDataJson);
+                        if (0 != dwRetCode)
+                        {
+                            pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__DATA_CENTER_PACKAGE_FORMAT_ERR;
+                            TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessCmd_ItemUse: response data format error. [ret=%d][seq=%u]", \
+                                dwRetCode, \
+                                pstUser->m_udwBSeqNo));
+                            return -7;
+                        }
+                        break;
+                    }
+                }
+                if (MAX_SP_REWARD_ITEM_NUM < stRefreshData.m_stChestRsp.m_vecReward.size()
+                    || 0 >= stRefreshData.m_stChestRsp.m_vecReward.size())
+                {
+                    pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__REQ_PARAM_ERROR;
+                    TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessCmd_ItemUse: chest reward size is over. [size=%ld] [seq=%u]", \
+                        stRefreshData.m_stChestRsp.m_vecReward.size(), \
+                        pstUser->m_udwBSeqNo));
+                    return -8;
+                }
+                SSpGlobalRes stGlobalRes;
+                stGlobalRes.Reset();
+                for (TINT32 dwIdx = 0; dwIdx < stRefreshData.m_stChestRsp.m_vecReward.size(); ++dwIdx)
+                {
+                    SOneGlobalRes *pstOneGlobalRes = stRefreshData.m_stChestRsp.m_vecReward[dwIdx];
+                    if (pstOneGlobalRes->ddwType != EN_GLOBALRES_TYPE_LORD_IMAGE)
+                    {
+                        continue;
+                    }
+                    stGlobalRes.aRewardList[dwIdx].udwType = pstOneGlobalRes->ddwType;
+                    stGlobalRes.aRewardList[dwIdx].udwId = pstOneGlobalRes->ddwId;
+                    stGlobalRes.aRewardList[dwIdx].udwNum = pstOneGlobalRes->ddwNum;
+                    ++stGlobalRes.udwTotalNum;
+                    dwRetCode = CGlobalResLogic::AddGlobalRes(pstUser, &pstUser->m_stCityInfo, pstOneGlobalRes->ddwType, pstOneGlobalRes->ddwId, pstOneGlobalRes->ddwNum);
+                    if (dwRetCode > 0)
+                    {
+                        pstSession->m_stCommonResInfo.m_dwRetCode = dwRetCode;
+                        return -1;
+                    }
+                    else if (dwRetCode < 0)
+                    {
+                        pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__REQ_PARAM_ERROR;
+                        return -2;
+                    }
+                    udwImageId = pstOneGlobalRes->ddwId;
+                    break;
+                }
+                // cost item 
+                CItemBase::CostItem(&pstUser->m_tbBackpack, udwItemId);
+
+                pstUser->m_udwLotteryChestItemId = udwItemId;
+                pstUser->m_udwLotteryChestItemNum = 1;
+                pstUser->m_stRewardWindow = stGlobalRes;
+
+                Json::Value jTmp = Json::Value(Json::objectValue);
+                jTmp["lord_image"] = Json::Value(Json::objectValue);
+                jTmp["lord_image"]["id"] = udwImageId;
+                CCommonBase::AddRewardWindow(pstUser, pstUser->m_tbPlayer.m_nUid, EN_REWARD_WIMDOW_TYPE_LORD_IMAGE, EN_REWARD_WINDOW_GET_TYPE_OPEN_CHEST,
+                    0, &stGlobalRes, FALSE, jTmp);
+                pstSession->m_udwCommandStep = EN_COMMAND_STEP__END;
+                return 0;
+            }
+            else
+            {
+                pstSession->m_udwCommandStep = EN_COMMAND_STEP__END;
+                return 0;
+            }
+        }
+        return 0;
+    }
+}
+
+TINT32 CProcessItem::ProcessCmd_UnlockVipStage(SSession *pstSession, TBOOL& bNeedResponse)
+{
+    SUserInfo *pstUser = &pstSession->m_stUserInfo;
+    TbPlayer *ptbPlayer = &pstUser->m_tbPlayer;
+
+    TINT32 dwRetCode = 0;
+
+    //获取输入参数
+    TUINT32 udwItemId = atoi(pstSession->m_stReqParam.m_szKey[0]);
+    TUINT32 udwGemCost = atoi(pstSession->m_stReqParam.m_szKey[1]);
+
+    TUINT32 udwPrice = CGameInfo::GetInstance()->m_oJsonRoot["game_item"][CCommonFunc::NumToString(udwItemId)]["a0"].asUInt();
+    //check condition
+    dwRetCode = CItemLogic::CanUnlockVipStage(pstUser);
+    if (dwRetCode != 0)
+    {
+        pstSession->m_stCommonResInfo.m_dwRetCode = dwRetCode;
+        return -1;
+    }
+
+    //检查物品
+    if (udwGemCost > 0)
+    {
+        if (CPlayerBase::HasEnoughGem(&pstUser->m_tbLogin, udwGemCost) == FALSE)
+        {
+            pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__GEM_LACK;
+            return -2;
+        }
+        if (udwGemCost != udwPrice)
+        {
+            pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__REQ_PARAM_ERROR;
+            return -3;
+        }
+    }
+    else if (CItemBase::HasEnoughItem(&pstUser->m_tbBackpack, udwItemId) == FALSE)
+    {
+        pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__ITEM_NOT_ENOUGH;
+        return -2;
+    }
+
+    //消耗物品，解锁下一阶段
+    if (udwGemCost > 0)
+    {
+        CPlayerBase::CostGem(pstUser, udwGemCost);
+    }
+    else
+    {
+        CItemBase::CostItem(&pstUser->m_tbBackpack, udwItemId);
+    }
+
+    ptbPlayer->Set_Vip_stage(++ptbPlayer->m_nVip_stage);
+    return 0;
+}
+
+TINT32 CProcessItem::ProcessCmd_VipOpenChest(SSession *pstSession, TBOOL& bNeedResponse)
+{
+    TINT32 dwRetCode = 0;
+    SUserInfo *pstUser = &pstSession->m_stUserInfo;
+    SCityInfo *pstCity = &pstUser->m_stCityInfo;
+
+    TUINT32 udwChestId = atoi(pstSession->m_stReqParam.m_szKey[0]);
+    TUINT32 udwChestNum = atoi(pstSession->m_stReqParam.m_szKey[1]);
+
+    TUINT32 udwItemCategry = CGameInfo::GetInstance()->m_oJsonRoot["game_item"][CCommonFunc::NumToString(udwChestId)]["a1"].asUInt();
+    if (EN_ITEM_CATEGORY__CHEST != udwItemCategry)
+    {
+        pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__REQ_PARAM_ERROR;
+        TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessCmd_VipOpenChest: id not chest [chest_id=%u] [seq=%u]", udwChestId, pstSession->m_stUserInfo.m_udwBSeqNo));
+        return -1;
+    }
+
+    if (FALSE == CItemBase::HasEnoughItem(&pstUser->m_tbBackpack, udwChestId, udwChestNum))
+    {
+        pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__ITEM_NOT_ENOUGH;
+        TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessCmd_VipOpenChest: chest not enough [chest_id=%u num=%u] [seq=%u]", udwChestId, udwChestNum, pstSession->m_stUserInfo.m_udwBSeqNo));
+        return -2;
+    }
+
+    //检测是否箱子
+    CGameInfo *poGameInfo = CGameInfo::GetInstance();
+    if (!poGameInfo->m_oJsonRoot["game_chest"].isMember(CCommonFunc::NumToString(udwChestId)))
+    {
+        pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__REQ_PARAM_ERROR;
+        TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessCmd_VipOpenChest: not such chest  [chest_id=%u] [seq=%u]", udwChestId, pstSession->m_stUserInfo.m_udwBSeqNo));
+        return -3;
+    }
+
+    //判断是否走运营
+    TINT32 dwIsDataCenter = poGameInfo->m_oJsonRoot["game_item"][CCommonFunc::NumToString(udwChestId)]["a21"].asInt();
+    if (dwIsDataCenter == 0)
+    {
+        SSpGlobalRes stGlobalRes;
+        stGlobalRes.Reset();
+        const Json::Value &oChestReward = poGameInfo->m_oJsonRoot["game_chest"][CCommonFunc::NumToString(udwChestId)]["a1"];
+        TINT32 dwRewardType = poGameInfo->m_oJsonRoot["game_chest"][CCommonFunc::NumToString(udwChestId)]["a0"].asInt();
+
+        for (TUINT32 udwIdx = 0; udwIdx < udwChestNum; ++udwIdx)
+        {
+            if (CItemLogic::IsChestLottery(udwChestId))
+            {   //抽奖箱子，暂时用不到
+                SSpGlobalRes stGlobalResOne;
+                stGlobalResOne.Reset();
+                dwRetCode = CItemLogic::GetChestLottery(pstUser, udwChestId, &stGlobalResOne);
+                CItemLogic::AppendGlobalRes(&stGlobalRes, &stGlobalResOne);
+            }
+            else
+            {
+                dwRetCode = CGlobalResLogic::GetSpGlobalResInfo(oChestReward, dwRewardType, &stGlobalRes);
+            }
+            if (dwRetCode != 0)
+            {
+                pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__REQ_PARAM_ERROR;
+                TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessCmd_VipOpenChest: get reward fail  [chest_id=%u ret=%d] [seq=%u]", udwChestId, dwRetCode, pstSession->m_stUserInfo.m_udwBSeqNo));
+                return -6;
+
+            }
+        }
+        //获取奖励
+        dwRetCode = CGlobalResLogic::AddSpGlobalRes(pstUser, pstCity, &stGlobalRes);
+        if (dwRetCode != 0)
+        {
+            TSE_LOG_ERROR(CGameInfo::GetInstance()->m_poLog, ("ProcessCmd_VipOpenChest: GetChest: take reward fail [uid=%ld chestId=%u] [ret=%d]", pstUser->m_tbPlayer.Get_Uid(), udwChestId, dwRetCode));
+            return dwRetCode;
+        }
+
+        CItemBase::CostItem(&pstUser->m_tbBackpack, udwChestId, udwChestNum);
+
+        // 抽奖记录，暂时用不到
+        pstUser->m_udwLotteryChestItemId = udwChestId;
+        pstUser->m_stRewardWindow = stGlobalRes;
+        pstUser->m_udwLotteryChestItemNum = udwChestNum;
+
+        Json::Value jTmp = Json::Value(Json::objectValue);
+        jTmp["chest"] = Json::Value(Json::objectValue);
+        jTmp["chest"]["id"] = udwChestId;
+        jTmp["chest"]["num"] = udwChestNum;
+
+        CCommonBase::AddRewardWindow(pstUser, pstUser->m_tbPlayer.m_nUid, EN_REWARD_WIMDOW_TYPE_CHEST, EN_REWARD_WINDOW_GET_TYPE_OPEN_CHEST,
+            0, &stGlobalRes, FALSE, jTmp);
+        return 0;
+    }
+    // 走运营
+    else
+    {
+        if (EN_COMMAND_STEP__INIT == pstSession->m_udwCommandStep)
+        {
+            pstSession->m_udwCommandStep = EN_COMMAND_STEP__1;
+            pstSession->m_udwExpectProcedure = EN_EXPECT_PROCEDURE__DATA_CENTER;
+            pstSession->ResetDataCenterReq();
+            DataCenterReqInfo* pstReq = new DataCenterReqInfo;
+            pstReq->m_udwType = EN_REFRESH_DATA_TYPE__CHEST;
+            Json::Value rDataReqJson = Json::Value(Json::objectValue);
+
+            rDataReqJson["sid"] = pstUser->m_tbLogin.m_nSid;
+            rDataReqJson["uid"] = pstUser->m_tbPlayer.m_nUid;
+            rDataReqJson["castle_lv"] = CCityBase::GetBuildingLevelByFuncType(&pstUser->m_stCityInfo, EN_BUILDING_TYPE__CASTLE);
+            rDataReqJson["request"] = Json::Value(Json::objectValue);
+            rDataReqJson["request"]["chest_id"] = udwChestId;
+            rDataReqJson["request"]["open_num"] = udwChestNum;
+
+            Json::FastWriter rEventWriter;
+            pstReq->m_sReqContent = rEventWriter.write(rDataReqJson);
+            pstSession->m_vecDataCenterReq.push_back(pstReq);
+
+            TSE_LOG_DEBUG(pstSession->m_poServLog, ("ProcessCmd_VipOpenChest: data center req: [json=%s] [type=%u] [uid=%ld] [seq=%u]", \
+                pstReq->m_sReqContent.c_str(), \
+                pstReq->m_udwType, \
+                pstUser->m_tbPlayer.m_nUid, \
+                pstSession->m_udwSeqNo));
+            bNeedResponse = TRUE;
+            TINT32 dwRetCode = CBaseProcedure::SendDataCenterRequest(pstSession, EN_SERVICE_TYPE_DATA_CENTER_REQ);
+            if (dwRetCode == 0)
+            {
+                return 0;
+            }
+            else
+            {
+                pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__SEND_DATA_CENTER_REQ_ERR;
+                TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessCmd_VipOpenChest: send request to data center failed. [json=%s] [ret=%d] [seq=%u]", \
+                    pstReq->m_sReqContent.c_str(), \
+                    dwRetCode, \
+                    pstUser->m_udwBSeqNo));
+                return -5;
+            }
+        }
+
+        if (EN_COMMAND_STEP__1 == pstSession->m_udwCommandStep)
+        {
+            SRefreshData stRefreshData;
+            vector<DataCenterRspInfo*>& vecRsp = pstSession->m_vecDataCenterRsp;
+            DataCenterRspInfo *pstDataCenterRsp = NULL;
+            if (vecRsp.size() > 0)
+            {
+                stRefreshData.Reset();
+                Json::Reader jsonReader;
+                Json::Value oRspDataJson;
+                for (TUINT32 udwIdx = 0; udwIdx < vecRsp.size(); ++udwIdx)
+                {
+                    pstDataCenterRsp = vecRsp[udwIdx];
+                    if (EN_REFRESH_DATA_TYPE__CHEST == pstDataCenterRsp->m_udwType)
+                    {
+                        TSE_LOG_DEBUG(pstSession->m_poServLog, ("ProcessCmd_VipOpenChest: data center get rsp: [json=%s] [uid=%ld][seq=%u]",
+                            pstDataCenterRsp->m_sRspJson.c_str(), \
+                            pstUser->m_tbPlayer.m_nUid, \
+                            pstUser->m_udwBSeqNo));
+
+                        if (FALSE == jsonReader.parse(pstDataCenterRsp->m_sRspJson, oRspDataJson))
+                        {
+                            pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__PARSE_DATA_CENTER_PACKAGE_ERR;
+                            TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessCmd_VipOpenChest: prase rsp from data center failed. [seq=%u]", \
+                                pstUser->m_udwBSeqNo));
+                            return -6;
+                        }
+                        TINT32 dwRetCode = stRefreshData.m_stChestRsp.setVal(oRspDataJson);
+                        if (0 != dwRetCode)
+                        {
+                            pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__DATA_CENTER_PACKAGE_FORMAT_ERR;
+                            TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessCmd_VipOpenChest: response data format error. [ret=%d][seq=%u]", \
+                                dwRetCode, \
+                                pstUser->m_udwBSeqNo));
+                            return -7;
+                        }
+                        break;
+                    }
+                }
+                /*if (MAX_SP_REWARD_ITEM_NUM < stRefreshData.m_stChestRsp.m_vecReward.size()
+                    || 0 >= stRefreshData.m_stChestRsp.m_vecReward.size())*/
+                if (0 >= stRefreshData.m_stChestRsp.m_vecReward.size())
+                {
+                    pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__REQ_PARAM_ERROR;
+                    TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessCmd_VipOpenChest: chest reward size is over. [size=%ld] [seq=%u]", \
+                        stRefreshData.m_stChestRsp.m_vecReward.size(), \
+                        pstUser->m_udwBSeqNo));
+                    return -8;
+                }
+                //奖励汇总
+                Json::Value jReward = Json::Value(Json::objectValue);
+                string strType;
+                string strId;
+                for (TINT32 dwIdx = 0; dwIdx < stRefreshData.m_stChestRsp.m_vecReward.size(); ++dwIdx)
+                {
+                    SOneGlobalRes *pstOneGlobalRes = stRefreshData.m_stChestRsp.m_vecReward[dwIdx];
+                    strType = CCommonFunc::NumToString(pstOneGlobalRes->ddwType);
+                    strId = CCommonFunc::NumToString(pstOneGlobalRes->ddwId);
+                    if (jReward.isMember(strType))
+                    {
+                        if (jReward[strType].isMember(strId))
+                        {
+                            jReward[strType][strId]["num"] = jReward[strType][strId]["num"].asInt64() + pstOneGlobalRes->ddwNum;
+                        }
+                        else
+                        {
+                            jReward[strType][strId]["num"] = pstOneGlobalRes->ddwNum;
+                        }
+                    }
+                    else
+                    {
+                        jReward[strType][strId]["num"] = pstOneGlobalRes->ddwNum;
+                    }
+                }
+                SSpGlobalRes stGlobalRes;
+                stGlobalRes.Reset();
+                Json::Value::Members jType = jReward.getMemberNames();
+                for (TUINT32 udwIdx = 0; udwIdx < jType.size(); udwIdx++)
+                {
+                    Json::Value::Members jId = jReward[jType[udwIdx]].getMemberNames();
+                    for (TUINT32 udwIdy = 0; udwIdy < jId.size(); udwIdy++)
+                    {
+                        stGlobalRes.aRewardList[stGlobalRes.udwTotalNum].udwType = atoi(jType[udwIdx].c_str());
+                        stGlobalRes.aRewardList[stGlobalRes.udwTotalNum].udwId = atoi(jId[udwIdy].c_str());
+                        stGlobalRes.aRewardList[stGlobalRes.udwTotalNum].udwNum = jReward[jType[udwIdx]][jId[udwIdy]]["num"].asUInt();
+                        dwRetCode = CGlobalResLogic::AddGlobalRes(pstUser, pstCity, stGlobalRes.aRewardList[stGlobalRes.udwTotalNum].udwType,
+                            stGlobalRes.aRewardList[stGlobalRes.udwTotalNum].udwId, stGlobalRes.aRewardList[stGlobalRes.udwTotalNum].udwNum);
+                        ++stGlobalRes.udwTotalNum;
+                        if (dwRetCode > 0)
+                        {
+                            pstSession->m_stCommonResInfo.m_dwRetCode = dwRetCode;
+                            return -1;
+                        }
+                        else if (dwRetCode < 0)
+                        {
+                            pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__REQ_PARAM_ERROR;
+                            return -2;
+                        }
+                    }
+                }
+                //for (TINT32 dwIdx = 0; dwIdx < stRefreshData.m_stChestRsp.m_vecReward.size(); ++dwIdx)
+                //{
+                //    SOneGlobalRes *pstOneGlobalRes = stRefreshData.m_stChestRsp.m_vecReward[dwIdx];
+                //    TSE_LOG_DEBUG(pstSession->m_poServLog, ("ProcessCmd_VipOpenChest: chest reward [type=%ld] [id=%ld] [num=%ld] [seq=%u]", \
+                //        pstOneGlobalRes->ddwType, \
+                //        pstOneGlobalRes->ddwId, \
+                //        pstOneGlobalRes->ddwNum, \
+                //        pstUser->m_udwBSeqNo));
+                //    stGlobalRes.aRewardList[dwIdx].udwType = pstOneGlobalRes->ddwType;
+                //    stGlobalRes.aRewardList[dwIdx].udwId = pstOneGlobalRes->ddwId;
+                //    stGlobalRes.aRewardList[dwIdx].udwNum = pstOneGlobalRes->ddwNum;
+                //    ++stGlobalRes.udwTotalNum;
+                //    dwRetCode = CGlobalResLogic::AddGlobalRes(pstUser, pstCity, pstOneGlobalRes->ddwType, pstOneGlobalRes->ddwId, pstOneGlobalRes->ddwNum);
+                //    if (dwRetCode > 0)
+                //    {
+                //        pstSession->m_stCommonResInfo.m_dwRetCode = dwRetCode;
+                //        return -1;
+                //    }
+                //    else if (dwRetCode < 0)
+                //    {
+                //        pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__REQ_PARAM_ERROR;
+                //        return -2;
+                //    }
+                //}
+                CItemBase::CostItem(&pstUser->m_tbBackpack, udwChestId, udwChestNum);
+
+                pstUser->m_udwLotteryChestItemId = udwChestId;
+                pstUser->m_udwLotteryChestItemNum = 1;
+                pstUser->m_stRewardWindow = stGlobalRes;
+                Json::Value jTmp = Json::Value(Json::objectValue);
+
+                jTmp["chest"] = Json::Value(Json::objectValue);
+                jTmp["chest"]["id"] = udwChestId;
+                jTmp["chest"]["num"] = udwChestNum;
+
+                CCommonBase::AddRewardWindow(pstUser, pstUser->m_tbPlayer.m_nUid, EN_REWARD_WIMDOW_TYPE_CHEST, EN_REWARD_WINDOW_GET_TYPE_OPEN_CHEST,
+                    0, &stGlobalRes, FALSE, jTmp);
+
+
+                pstSession->m_udwCommandStep = EN_COMMAND_STEP__END;
+                return 0;
+
+            }
+            else
+            {
+                pstSession->m_udwCommandStep = EN_COMMAND_STEP__END;
+                return 0;
+            }
+        }
+        return 0;
+    }
 }

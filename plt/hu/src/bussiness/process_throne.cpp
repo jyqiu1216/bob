@@ -360,11 +360,11 @@ TINT32 CProcessThrone::ProcessCmd_ThroneDubTitle(SSession *pstSession, TBOOL &bN
         CMsgBase::SendOperateMail(pstSession->m_tbTmpPlayer.m_nUid, EN_MAIL_ID__BE_DUBBED_TITLE, 
             pstSession->m_tbTmpPlayer.m_nSid, 0, "", writer.write(jExInfo).c_str(), "");
 
-        if (pstSession->m_tbThrone.m_nStatus != EN_THRONE_STATUS__CONTEST_PERIOD)
-        {
-            string szTmp = pstSession->m_tbTmpPlayer.m_sUin + "#" + CCommonFunc::NumToString(dwTitleId);
-            CSendMessageBase::SendBroadcast(&pstSession->m_stUserInfo, ptbSelfPlayer->m_nSid, 0, EN_BROADCAST_CONTENT_ID__DUB_TITLE, szTmp);
-        }
+        //if (pstSession->m_tbThrone.m_nStatus != EN_THRONE_STATUS__CONTEST_PERIOD)
+        //{
+        string szTmp = pstSession->m_tbTmpPlayer.m_sUin + "#" + CCommonFunc::NumToString(dwTitleId);
+        CSendMessageBase::SendBroadcast(&pstSession->m_stUserInfo, ptbSelfPlayer->m_nSid, 0, EN_BROADCAST_CONTENT_ID__DUB_TITLE, szTmp);
+        //}
 
         pstSession->m_udwCommandStep = EN_COMMAND_STEP__END;
         return 0;
@@ -428,12 +428,6 @@ TINT32 CProcessThrone::ProcessCmd_ThroneAbandon(SSession *pstSession, TBOOL &bNe
             CSendMessageBase::SendBroadcast(pstUser, ptbThrone->m_nSid, 0, EN_BROADCAST_CONTENT_ID__THRONE_PEACE_TIME_END);
         }
 
-        CCommonLogic::AbandonThrone(ptbAlliance, ptbThrone, ptbWild);
-        ptbThrone->Set_Status(EN_THRONE_STATUS__QUIET_PERIOD);
-        ptbThrone->Set_End_time(0);
-        ptbWild->Set_Status(ptbThrone->m_nStatus);
-        ptbWild->Set_Time_end(0);
-
         TbMarch_action tbMarch;
 
         tbMarch.Reset();
@@ -442,21 +436,30 @@ TINT32 CProcessThrone::ProcessCmd_ThroneAbandon(SSession *pstSession, TBOOL &bNe
         tbMarch.Set_Sid(ptbThrone->m_nSid);
         CAwsRequest::DeleteItem(pstSession, &tbMarch);
 
-        TUINT32 udwCurTime = CTimeUtils::GetUnixTime();
-        for (TUINT32 udwIdx = 0; udwIdx < pstSession->m_udwIdolNum; udwIdx++)
+        if (ptbThrone->m_nStatus == EN_THRONE_STATUS__PEACE_TIME)
         {
-            tbMarch.Reset();
-            tbMarch.Set_Suid(0);
-            tbMarch.Set_Id(CActionBase::GenMapActionId(pstSession->m_atbIdol[udwIdx].m_nSid, pstSession->m_atbIdol[udwIdx].m_nPos));
-            tbMarch.Set_Sid(pstSession->m_atbIdol[udwIdx].m_nSid);
-            tbMarch.Set_Tpos(pstSession->m_atbIdol[udwIdx].m_nPos);
-            tbMarch.Set_Mclass(EN_ACTION_MAIN_CLASS__TIMER);
-            tbMarch.Set_Sclass(EN_ACTION_SEC_CLASS__IDOL_PERIOD);
-            tbMarch.Set_Status(EN_TITMER_IDOL_PERIOD_STATUS__THRONE_PEACE_TIME);
-            tbMarch.Set_Etime(udwCurTime + 2); //防止提前执行了...需要在throne数据更新之后才执行
-            CAwsRequest::UpdateItem(pstSession, &tbMarch);
+            TUINT32 udwCurTime = CTimeUtils::GetUnixTime();
+            for (TUINT32 udwIdx = 0; udwIdx < pstSession->m_udwIdolNum; udwIdx++)
+            {
+                tbMarch.Reset();
+                tbMarch.Set_Suid(0);
+                tbMarch.Set_Id(CActionBase::GenMapActionId(pstSession->m_atbIdol[udwIdx].m_nSid, pstSession->m_atbIdol[udwIdx].m_nPos));
+                tbMarch.Set_Sid(pstSession->m_atbIdol[udwIdx].m_nSid);
+                tbMarch.Set_Tpos(pstSession->m_atbIdol[udwIdx].m_nPos);
+                tbMarch.Set_Mclass(EN_ACTION_MAIN_CLASS__TIMER);
+                tbMarch.Set_Sclass(EN_ACTION_SEC_CLASS__IDOL_PERIOD);
+                tbMarch.Set_Status(EN_TITMER_IDOL_PERIOD_STATUS__THRONE_PEACE_TIME);
+                tbMarch.Set_Etime(udwCurTime + 2); //防止提前执行了...需要在throne数据更新之后才执行
+                CAwsRequest::UpdateItem(pstSession, &tbMarch);
+            }
         }
 
+        CCommonLogic::AbandonThrone(ptbAlliance, ptbThrone, ptbWild);
+        ptbThrone->Set_Status(EN_THRONE_STATUS__CONTEST_PERIOD);
+        ptbThrone->Set_End_time(0);
+        ptbWild->Set_Status(ptbThrone->m_nStatus);
+        ptbWild->Set_Time_end(0);
+        
         pstSession->m_udwCommandStep = EN_COMMAND_STEP__END;
         if (pstSession->m_vecAwsReq.size() > 0)
         {

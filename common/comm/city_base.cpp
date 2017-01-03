@@ -576,7 +576,7 @@ TINT32 CCityBase::DelBuildingAtPos(TbCity* ptbCity, TUINT32 udwPos)
     return -1;
 }
 
-TINT32 CCityBase::AddBuilding(TUINT32 udwPos, TUINT8 ucType, TUINT8 ucLevel, TbCity& tbCity)
+TINT32 CCityBase::AddBuilding(TUINT32 udwPos, TUINT32 ucType, TUINT8 ucLevel, TbCity& tbCity)
 {
     if(tbCity.m_bBuilding.m_udwNum == MAX_BUILDING_NUM_IN_ONE_CITY)
     {
@@ -613,7 +613,7 @@ TUINT8 CCityBase::GetBuildingNumByLvAndType(SCityInfo *pstCity, TUINT32 udwFuncT
     return ucNum;
 }
 
-TUINT32 CCityBase::GetBuildingLimitLv(TUINT8 ucType)
+TUINT32 CCityBase::GetBuildingLimitLv(TUINT32 ucType)
 {
     return CGameInfo::GetInstance()->m_oJsonRoot["game_building"][CCommonFunc::NumToString(ucType)]["r"]["r0"].size();
 }

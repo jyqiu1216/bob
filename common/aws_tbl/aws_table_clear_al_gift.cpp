@@ -1,8 +1,8 @@
-#include "aws_table_notic_push_token.h"
+#include "aws_table_clear_al_gift.h"
 
-TableDesc TbNotic_push_token::oTableDesc;
+TableDesc TbClear_al_gift::oTableDesc;
 
-int TbNotic_push_token::Init(const string& sConfFile, const string strProjectName)
+int TbClear_al_gift::Init(const string& sConfFile, const string strProjectName)
 {
 	CFieldProperty fld_prop;
 	if (fld_prop.Init(sConfFile.c_str()) == false)
@@ -16,12 +16,12 @@ int TbNotic_push_token::Init(const string& sConfFile, const string strProjectNam
 	return 0;
 }
 
-AwsTable* TbNotic_push_token::NewObject()
+AwsTable* TbClear_al_gift::NewObject()
 {
-	return new TbNotic_push_token;
+	return new TbClear_al_gift;
 }
 
-string TbNotic_push_token::GetTableName()
+string TbClear_al_gift::GetTableName()
 {
 	ostringstream oss;
 	if(!oTableDesc.m_strProjectName.empty())
@@ -33,12 +33,12 @@ string TbNotic_push_token::GetTableName()
 	return oss.str();
 }
 
-TINT32 TbNotic_push_token::GetTableIdx()
+TINT32 TbClear_al_gift::GetTableIdx()
 {
 	 return 0;
 }
 
-AwsMap* TbNotic_push_token::OnScanReq(unsigned int udwIdxNo, bool bHasStartKey, bool bReturnConsumedCapacity,
+AwsMap* TbClear_al_gift::OnScanReq(unsigned int udwIdxNo, bool bHasStartKey, bool bReturnConsumedCapacity,
 	 unsigned int dwLimit, unsigned int dwSegment, unsigned int dwTotalSegments)
 {
 	oJsonWriter.omitEndingLineFeed();
@@ -78,12 +78,12 @@ AwsMap* TbNotic_push_token::OnScanReq(unsigned int udwIdxNo, bool bHasStartKey, 
 	}
 	if (bHasStartKey)
 	{
-		pScan->AddValue("/ExclusiveStartKey/apns_token/S",m_sApns_token);
+		pScan->AddValue("/ExclusiveStartKey/uid/N",m_nUid);
 	}
 	return pScan;
 }
 
-int TbNotic_push_token::OnScanReq(string& sPostData, unsigned int udwIdxNo, bool bHasStartKey, bool bReturnConsumedCapacity,
+int TbClear_al_gift::OnScanReq(string& sPostData, unsigned int udwIdxNo, bool bHasStartKey, bool bReturnConsumedCapacity,
  unsigned int dwLimit, unsigned int dwSegment, unsigned int dwTotalSegments)
 {
 	AwsMap* pScan = OnScanReq(udwIdxNo, bHasStartKey, bReturnConsumedCapacity, dwLimit, dwSegment, dwTotalSegments);
@@ -94,12 +94,12 @@ int TbNotic_push_token::OnScanReq(string& sPostData, unsigned int udwIdxNo, bool
 	return 0;
 }
 
-int TbNotic_push_token::OnScanRsp(const Json::Value& item)
+int TbClear_al_gift::OnScanRsp(const Json::Value& item)
 {
 	return OnResponse(item);
 }
 
-AwsMap* TbNotic_push_token::OnQueryReq(unsigned int udwIdxNo, const CompareDesc& comp_desc,
+AwsMap* TbClear_al_gift::OnQueryReq(unsigned int udwIdxNo, const CompareDesc& comp_desc,
 	bool bConsistentRead, bool bReturnConsumedCapacity, bool bScanIndexForward, unsigned int dwLimit, bool bCount)
 {
 	oJsonWriter.omitEndingLineFeed();
@@ -149,10 +149,10 @@ AwsMap* TbNotic_push_token::OnQueryReq(unsigned int udwIdxNo, const CompareDesc&
 		FieldDesc& fld_desc = oTableDesc.mFieldDesc[idx_desc.vecIdxFld[i]];
 		if (i == 0) //0只能是hash key，HASH KEY只能是EQ方式
 		{
-			if(fld_desc.udwFldNo == TbNOTIC_PUSH_TOKEN_FIELD_APNS_TOKEN)
+			if(fld_desc.udwFldNo == TbCLEAR_AL_GIFT_FIELD_UID)
 			{
-				pQuery->AddValue("/KeyConditions/apns_token/AttributeValueList[0]/S", m_sApns_token);
-				pQuery->AddValue("/KeyConditions/apns_token/ComparisonOperator", "EQ");
+				pQuery->AddValue("/KeyConditions/uid/AttributeValueList[0]/N", m_nUid);
+				pQuery->AddValue("/KeyConditions/uid/ComparisonOperator", "EQ");
 			}
 		}
 		else if (i == 1) //1只能是rangekey or local index，可以有多种方式
@@ -176,7 +176,7 @@ AwsMap* TbNotic_push_token::OnQueryReq(unsigned int udwIdxNo, const CompareDesc&
 	return pQuery;
 }
 
-int TbNotic_push_token::OnQueryReq(string& sPostData, unsigned int udwIdxNo, const CompareDesc& comp_desc,
+int TbClear_al_gift::OnQueryReq(string& sPostData, unsigned int udwIdxNo, const CompareDesc& comp_desc,
 	bool bConsistentRead, bool bReturnConsumedCapacity, bool bScanIndexForward, unsigned int dwLimit)
 {
 	oJsonWriter.omitEndingLineFeed();
@@ -188,12 +188,12 @@ int TbNotic_push_token::OnQueryReq(string& sPostData, unsigned int udwIdxNo, con
 	return 0;
 }
 
-int TbNotic_push_token::OnQueryRsp(const Json::Value& item)
+int TbClear_al_gift::OnQueryRsp(const Json::Value& item)
 {
 	return OnResponse(item);
 }
 
-int TbNotic_push_token::OnCountReq(string& sPostData, unsigned int udwIdxNo, const CompareDesc& comp_desc, 
+int TbClear_al_gift::OnCountReq(string& sPostData, unsigned int udwIdxNo, const CompareDesc& comp_desc, 
 		bool bConsistentRead, bool bReturnConsumedCapacity, bool bScanIndexForward, unsigned int dwLimit)
 {
 	AwsMap* pQuery = OnQueryReq(udwIdxNo, comp_desc, bConsistentRead, bReturnConsumedCapacity, bScanIndexForward, dwLimit, true);
@@ -204,7 +204,7 @@ int TbNotic_push_token::OnCountReq(string& sPostData, unsigned int udwIdxNo, con
 	return 0;
 }
 
-AwsMap* TbNotic_push_token::OnUpdateItemReq(
+AwsMap* TbClear_al_gift::OnUpdateItemReq(
 	const ExpectedDesc& expected_desc, int dwReturnValuesType, bool bReturnConsumedCapacity)
 {
 	oJsonWriter.omitEndingLineFeed();
@@ -226,24 +226,24 @@ AwsMap* TbNotic_push_token::OnUpdateItemReq(
 	{
 		pUpdateItem->AddValue("/ReturnValues", ReturnValuesType2Str(dwReturnValuesType));
 	}
-	pUpdateItem->AddValue("/Key/apns_token/S", m_sApns_token);
+	pUpdateItem->AddValue("/Key/uid/N", m_nUid);
 	for (map<unsigned int, int>::iterator iter = m_mFlag.begin(); iter != m_mFlag.end(); ++iter)
 	{
 		bUpdateFlag = true;
-		if (TbNOTIC_PUSH_TOKEN_FIELD_UID == iter->first)
+		if (TbCLEAR_AL_GIFT_FIELD_CLEAR_AL_GIFT == iter->first)
 		{
-			if(UPDATE_ACTION_TYPE_DELETE == iter->second)
+			if (!m_bClear_al_gift.empty())
 			{
-				pUpdateItem->AddValue("/AttributeUpdates/uid/Action", "DELETE");
+				pUpdateItem->AddValue("/AttributeUpdates/clear_al_gift/Value/B", Base64Encode((char*)&m_bClear_al_gift.m_astList[0], m_bClear_al_gift.m_udwNum*sizeof(TINT64), sBase64Encode));
+				pUpdateItem->AddValue("/AttributeUpdates/clear_al_gift/Action", "PUT");
 			}
 			else
 			{
-				pUpdateItem->AddValue("/AttributeUpdates/uid/Value/N", m_nUid);
-				pUpdateItem->AddValue("/AttributeUpdates/uid/Action", UpdateActionType2Str(iter->second));
+				pUpdateItem->AddValue("/AttributeUpdates/clear_al_gift/Action", "DELETE");
 			}
 			continue;
 		}
-		if (TbNOTIC_PUSH_TOKEN_FIELD_SEQ == iter->first)
+		if (TbCLEAR_AL_GIFT_FIELD_SEQ == iter->first)
 		{
 			if(UPDATE_ACTION_TYPE_DELETE == iter->second)
 			{
@@ -253,19 +253,6 @@ AwsMap* TbNotic_push_token::OnUpdateItemReq(
 			{
 				pUpdateItem->AddValue("/AttributeUpdates/seq/Value/N", m_nSeq);
 				pUpdateItem->AddValue("/AttributeUpdates/seq/Action", UpdateActionType2Str(iter->second));
-			}
-			continue;
-		}
-		if (TbNOTIC_PUSH_TOKEN_FIELD_UTIME == iter->first)
-		{
-			if(UPDATE_ACTION_TYPE_DELETE == iter->second)
-			{
-				pUpdateItem->AddValue("/AttributeUpdates/utime/Action", "DELETE");
-			}
-			else
-			{
-				pUpdateItem->AddValue("/AttributeUpdates/utime/Value/N", m_nUtime);
-				pUpdateItem->AddValue("/AttributeUpdates/utime/Action", UpdateActionType2Str(iter->second));
 			}
 			continue;
 		}
@@ -306,7 +293,7 @@ AwsMap* TbNotic_push_token::OnUpdateItemReq(
 	return pUpdateItem;
 }
 
-int TbNotic_push_token::OnUpdateItemReq(string& sPostData,
+int TbClear_al_gift::OnUpdateItemReq(string& sPostData,
 	const ExpectedDesc& expected_desc, int dwReturnValuesType, bool bReturnConsumedCapacity)
 {
 	AwsMap* pUpdateItem = OnUpdateItemReq(expected_desc, dwReturnValuesType, bReturnConsumedCapacity);
@@ -322,12 +309,12 @@ int TbNotic_push_token::OnUpdateItemReq(string& sPostData,
 	return 0;
 }
 
-int TbNotic_push_token::OnUpdateItemRsp(const Json::Value& item)
+int TbClear_al_gift::OnUpdateItemRsp(const Json::Value& item)
 {
 	return OnResponse(item);
 }
 
-AwsMap* TbNotic_push_token::OnWriteItemReq(int dwActionType)
+AwsMap* TbClear_al_gift::OnWriteItemReq(int dwActionType)
 {
 	++m_nSeq;
 	oJsonWriter.omitEndingLineFeed();
@@ -339,18 +326,17 @@ AwsMap* TbNotic_push_token::OnWriteItemReq(int dwActionType)
 	if (WRITE_ACTION_TYPE_PUT == dwActionType)
 	{
 		pItem = pWriteItem->GetAwsMap("PutRequest")->GetAwsMap("Item");
-		if (!m_sApns_token.empty())
-		{
-			pItem->AddValue("/apns_token/S", JsonEncode(m_sApns_token, sJsonEncode));
-		}
 		pItem->AddValue("/uid/N", m_nUid);
+		if (!m_bClear_al_gift.empty())
+		{
+			pItem->AddValue("/clear_al_gift/B", Base64Encode((char*)&m_bClear_al_gift.m_astList[0], m_bClear_al_gift.m_udwNum*sizeof(TINT64), sBase64Encode));
+		}
 		pItem->AddValue("/seq/N", m_nSeq);
-		pItem->AddValue("/utime/N", m_nUtime);
 	}
 	else if (WRITE_ACTION_TYPE_DELETE == dwActionType)
 	{
 		pItem = pWriteItem->GetAwsMap("DeleteRequest")->GetAwsMap("Key");
-		pItem->AddValue("/apns_token/S", m_sApns_token);
+		pItem->AddValue("/uid/N", m_nUid);
 	}
 	else
 	{
@@ -359,7 +345,7 @@ AwsMap* TbNotic_push_token::OnWriteItemReq(int dwActionType)
 	return pWriteItem;
 }
 
-void TbNotic_push_token::OnWriteItemReq(AwsMap* pWriteItem, int dwActionType)
+void TbClear_al_gift::OnWriteItemReq(AwsMap* pWriteItem, int dwActionType)
 {
 	++m_nSeq;
 	assert(pWriteItem);
@@ -371,18 +357,17 @@ void TbNotic_push_token::OnWriteItemReq(AwsMap* pWriteItem, int dwActionType)
 	if (WRITE_ACTION_TYPE_PUT == dwActionType)
 	{
 		pItem = pReqItem->GetAwsMap("PutRequest")->GetAwsMap("Item");
-		if (!m_sApns_token.empty())
-		{
-			pItem->AddValue("/apns_token/S", JsonEncode(m_sApns_token, sJsonEncode));
-		}
 		pItem->AddValue("/uid/N", m_nUid);
+		if (!m_bClear_al_gift.empty())
+		{
+			pItem->AddValue("/clear_al_gift/B", Base64Encode((char*)&m_bClear_al_gift.m_astList[0], m_bClear_al_gift.m_udwNum*sizeof(TINT64), sBase64Encode));
+		}
 		pItem->AddValue("/seq/N", m_nSeq);
-		pItem->AddValue("/utime/N", m_nUtime);
 	}
 	else if (WRITE_ACTION_TYPE_DELETE == dwActionType)
 	{
 		pItem = pReqItem->GetAwsMap("DeleteRequest")->GetAwsMap("Key");
-		pItem->AddValue("/apns_token/S", m_sApns_token);
+		pItem->AddValue("/uid/N", m_nUid);
 	}
 	else
 	{
@@ -391,14 +376,14 @@ void TbNotic_push_token::OnWriteItemReq(AwsMap* pWriteItem, int dwActionType)
 	pWriteItem->GetAwsMap("RequestItems")->GetAwsList(GetTableName())->SetValue(pReqItem, true);
 }
 
-AwsMap* TbNotic_push_token::OnReadItemReq(unsigned int udwIdxNo)
+AwsMap* TbClear_al_gift::OnReadItemReq(unsigned int udwIdxNo)
 {
 	oJsonWriter.omitEndingLineFeed();
 	IndexDesc& idx_desc = oTableDesc.mIndexDesc[udwIdxNo];
 	assert(idx_desc.sName == "PRIMARY"); //只能通过主键查询
 	AwsMap* pReadItem = new AwsMap;
 	assert(pReadItem);
-	pReadItem->AddValue("/Keys[0]/apns_token/S", m_sApns_token);
+	pReadItem->AddValue("/Keys[0]/uid/N", m_nUid);
 	ostringstream oss;
 	for (unsigned int i = 0; i < idx_desc.vecRtnFld.size(); ++i)
 	{
@@ -410,22 +395,22 @@ AwsMap* TbNotic_push_token::OnReadItemReq(unsigned int udwIdxNo)
 	return pReadItem;
 }
 
-void TbNotic_push_token::OnReadItemReq(AwsMap* pReadItem)
+void TbClear_al_gift::OnReadItemReq(AwsMap* pReadItem)
 {
 	assert(pReadItem);
 	AwsList* pKeys = pReadItem->GetAwsMap("RequestItems")->GetAwsMap(GetTableName())->GetAwsList("Keys");
 	AwsMap* pKey = new AwsMap;
 	assert(pKey);
-	pKey->AddValue("/apns_token/S", m_sApns_token);
+	pKey->AddValue("/uid/N", m_nUid);
 	pKeys->SetValue(pKey, true);
 }
 
-int TbNotic_push_token::OnReadItemRsp(const Json::Value& item)
+int TbClear_al_gift::OnReadItemRsp(const Json::Value& item)
 {
 	return OnResponse(item);
 }
 
-AwsMap* TbNotic_push_token::OnDeleteItemReq(
+AwsMap* TbClear_al_gift::OnDeleteItemReq(
 	const ExpectedDesc& expected_desc, int dwReturnValuesType, bool bReturnConsumedCapacity)
 {
 	oJsonWriter.omitEndingLineFeed();
@@ -440,7 +425,7 @@ AwsMap* TbNotic_push_token::OnDeleteItemReq(
 	{
 		pDeleteItem->AddValue("/ReturnValues", ReturnValuesType2Str(dwReturnValuesType));
 	}
-	pDeleteItem->AddValue("/Key/apns_token/S", m_sApns_token);
+	pDeleteItem->AddValue("/Key/uid/N", m_nUid);
 	ostringstream oss;
 	for (unsigned int i = 0; i < expected_desc.vecExpectedItem.size(); ++i)
 	{
@@ -470,7 +455,7 @@ AwsMap* TbNotic_push_token::OnDeleteItemReq(
 	return pDeleteItem;
 }
 
-int TbNotic_push_token::OnDeleteItemReq(string& sPostData,
+int TbClear_al_gift::OnDeleteItemReq(string& sPostData,
 	const ExpectedDesc& expected_desc, int dwReturnValuesType, bool bReturnConsumedCapacity)
 {
 	++m_nSeq;
@@ -482,12 +467,12 @@ int TbNotic_push_token::OnDeleteItemReq(string& sPostData,
 	return 0;
 }
 
-int TbNotic_push_token::OnDeleteItemRsp(const Json::Value& item)
+int TbClear_al_gift::OnDeleteItemRsp(const Json::Value& item)
 {
 	return OnResponse(item);
 }
 
-AwsMap* TbNotic_push_token::OnGetItemReq(unsigned int udwIdxNo,
+AwsMap* TbClear_al_gift::OnGetItemReq(unsigned int udwIdxNo,
 	bool bConsistentRead, bool bReturnConsumedCapacity)
 {
 	oJsonWriter.omitEndingLineFeed();
@@ -497,7 +482,7 @@ AwsMap* TbNotic_push_token::OnGetItemReq(unsigned int udwIdxNo,
 	AwsMap* pGetItem = new AwsMap;
 	assert(pGetItem);
 	pGetItem->AddValue("/TableName", GetTableName());
-	pGetItem->AddValue("/Key/apns_token/S", m_sApns_token);
+	pGetItem->AddValue("/Key/uid/N", m_nUid);
 	ostringstream oss;
 	for (unsigned int i = 0; i < idx_desc.vecRtnFld.size(); ++i)
 	{
@@ -514,7 +499,7 @@ AwsMap* TbNotic_push_token::OnGetItemReq(unsigned int udwIdxNo,
 	return pGetItem;
 }
 
-int TbNotic_push_token::OnGetItemReq(string& sPostData, unsigned int udwIdxNo,
+int TbClear_al_gift::OnGetItemReq(string& sPostData, unsigned int udwIdxNo,
 	bool bConsistentRead, bool bReturnConsumedCapacity)
 {
 	AwsMap* pGetItem = OnGetItemReq(udwIdxNo, bConsistentRead, bReturnConsumedCapacity);
@@ -525,12 +510,12 @@ int TbNotic_push_token::OnGetItemReq(string& sPostData, unsigned int udwIdxNo,
 	return 0;
 }
 
-int TbNotic_push_token::OnGetItemRsp(const Json::Value& item)
+int TbClear_al_gift::OnGetItemRsp(const Json::Value& item)
 {
 	return OnResponse(item);
 }
 
-AwsMap* TbNotic_push_token::OnPutItemReq(
+AwsMap* TbClear_al_gift::OnPutItemReq(
 	const ExpectedDesc& expected_desc, int dwReturnValuesType, bool bReturnConsumedCapacity)
 {
 	oJsonWriter.omitEndingLineFeed();
@@ -547,13 +532,12 @@ AwsMap* TbNotic_push_token::OnPutItemReq(
 	{
 		pPutItem->AddValue("/ReturnValues", ReturnValuesType2Str(dwReturnValuesType));
 	}
-	if (!m_sApns_token.empty())
-	{
-		pPutItem->AddValue("/Item/apns_token/S", JsonEncode(m_sApns_token, sJsonEncode));
-	}
 	pPutItem->AddValue("/Item/uid/N", m_nUid);
+	if (!m_bClear_al_gift.empty())
+	{
+		pPutItem->AddValue("/Item/clear_al_gift/B", Base64Encode((char*)&m_bClear_al_gift.m_astList[0], m_bClear_al_gift.m_udwNum*sizeof(TINT64), sBase64Encode));
+	}
 	pPutItem->AddValue("/Item/seq/N", m_nSeq);
-	pPutItem->AddValue("/Item/utime/N", m_nUtime);
 	ostringstream oss;
 	for (unsigned int i = 0; i < expected_desc.vecExpectedItem.size(); ++i)
 	{
@@ -584,7 +568,7 @@ AwsMap* TbNotic_push_token::OnPutItemReq(
 	return pPutItem;
 }
 
-int TbNotic_push_token::OnPutItemReq(string& sPostData,
+int TbClear_al_gift::OnPutItemReq(string& sPostData,
 	const ExpectedDesc& expected_desc, int dwReturnValuesType, bool bReturnConsumedCapacity)
 {
 	++m_nSeq;
@@ -596,12 +580,12 @@ int TbNotic_push_token::OnPutItemReq(string& sPostData,
 	return 0;
 }
 
-int TbNotic_push_token::OnPutItemRsp(const Json::Value& item)
+int TbClear_al_gift::OnPutItemRsp(const Json::Value& item)
 {
 	return OnResponse(item);
 }
 
-int TbNotic_push_token::OnResponse(const Json::Value& item)
+int TbClear_al_gift::OnResponse(const Json::Value& item)
 {
 	oJsonWriter.omitEndingLineFeed();
 	int dwResLen = 0;
@@ -610,14 +594,15 @@ int TbNotic_push_token::OnResponse(const Json::Value& item)
 	Json::Value::Members vecMembers = item.getMemberNames();
 	for (unsigned int i = 0; i < vecMembers.size(); ++i)
 	{
- 		if (vecMembers[i] == "apns_token")
-		{
-			m_sApns_token = item["apns_token"]["S"].asString();
-			continue;
-		}
-		if (vecMembers[i] == "uid")
+ 		if (vecMembers[i] == "uid")
 		{
 			m_nUid = strtoll(item["uid"]["N"].asString().c_str(), NULL, 10);
+			continue;
+		}
+		if (vecMembers[i] == "clear_al_gift")
+		{
+			Base64Decode(item["clear_al_gift"]["B"].asString(), (char*)&m_bClear_al_gift.m_astList[0], dwResLen);
+			m_bClear_al_gift.m_udwNum = dwResLen/sizeof(TINT64);
 			continue;
 		}
 		if (vecMembers[i] == "seq")
@@ -625,16 +610,11 @@ int TbNotic_push_token::OnResponse(const Json::Value& item)
 			m_nSeq = strtoll(item["seq"]["N"].asString().c_str(), NULL, 10);
 			continue;
 		}
-		if (vecMembers[i] == "utime")
-		{
-			m_nUtime = strtoll(item["utime"]["N"].asString().c_str(), NULL, 10);
-			continue;
-		}
 	}
 	return 0;
 }
 
-TINT64 TbNotic_push_token::GetSeq()
+TINT64 TbClear_al_gift::GetSeq()
 {
 	return m_nSeq;
 }

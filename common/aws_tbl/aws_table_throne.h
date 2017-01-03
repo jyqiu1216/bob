@@ -26,6 +26,7 @@ enum ETbThroneField
 	TbTHRONE_FIELD_REINFORCE_TROOP_FORCE = 15,
 	TbTHRONE_FIELD_OCCUPY_TIME = 16,
 	TbTHRONE_FIELD_OWNER_CID = 17,
+	TbTHRONE_FIELD_RANK_INFO = 18,
 };
 
 enum ETbThroneOpenType
@@ -54,6 +55,7 @@ public:
 	TINT64 m_nReinforce_troop_force;
 	TINT64 m_nOccupy_time;
 	TINT64 m_nOwner_cid;
+	Json::Value m_jRank_info;
 
 public:
 	static TableDesc oTableDesc;
@@ -88,6 +90,7 @@ public:
 		m_nReinforce_troop_force = 0;
 		m_nOccupy_time = 0;
 		m_nOwner_cid = 0;
+		m_jRank_info.clear();
 		ClearFlag();
 	};
 	const TINT64& Get_Sid()
@@ -249,6 +252,15 @@ public:
 	{
 		m_nOwner_cid = nOwner_cid;
 		m_mFlag[TbTHRONE_FIELD_OWNER_CID] = dwActionType;
+	}
+	const Json::Value& Get_Rank_info()
+	{
+		return m_jRank_info;
+	}
+	void Set_Rank_info(const Json::Value& jRank_info)
+	{
+		m_jRank_info = jRank_info;
+		m_mFlag[TbTHRONE_FIELD_RANK_INFO] = jRank_info.empty() ? UPDATE_ACTION_TYPE_DELETE : UPDATE_ACTION_TYPE_PUT;
 	}
 	//Scan命令使用,返回完整的请求包
 	AwsMap* OnScanReq(unsigned int udwIdxNo, bool bHasStartKey = false, bool bReturnConsumedCapacity = true,

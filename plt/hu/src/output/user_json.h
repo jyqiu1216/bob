@@ -72,6 +72,15 @@ private:
     TVOID GenIdolInfo(SSession *pstSession, Json::Value& rJson);
 
     TVOID GenThroneInfo(SSession *pstSession, Json::Value& rJson);
+
+    TVOID GenIdolDetailInfo(SSession *pstSession, Json::Value& rJson);
+
+    TVOID GenLordImageInfo(SSession *pstSession, Json::Value& rJson);
+
+    TVOID GeDecorationInfo(SSession *pstSession, Json::Value& rJson);
+
+    TVOID GeBlogTimeInfo(SSession* pstSession, Json::Value& rJson);
+
 };
 
 #endif

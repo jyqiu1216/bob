@@ -25,10 +25,12 @@
 #include "dragon_trail_control.h"
 #include "global_gift.h"
 #include "output_conf.h"
+#include "blog_time.h"
 
 #include "update_notic_task_mgr.h"
 #include "update_notic_task.h"
 #include "update_notic_process.h"
+#include "appsflyer_countries.h"
 
 // 静态变量定义
 CTseLogger*	CGlobalServ::m_poServLog		= NULL;
@@ -128,6 +130,10 @@ int CGlobalServ::InitAwsTable(const TCHAR *pszProjectPrefix)
     TbRandom_reward::Init("../tblxml/random_reward.xml", pszProjectPrefix);
     TbData_output::Init("../tblxml/data_output.xml", pszProjectPrefix);
     TbIdol::Init("../tblxml/idol.xml", pszProjectPrefix);
+    TbLord_image::Init("../tblxml/lord_image.xml", pszProjectPrefix);
+    TbDecoration::Init("../tblxml/decoration.xml", pszProjectPrefix);
+    TbClear_al_gift::Init("../tblxml/clear_al_gift.xml", pszProjectPrefix);
+
     return 0;
 }
 
@@ -244,6 +250,14 @@ int CGlobalServ::Init()
         return -19;
     }
 	TSE_LOG_INFO(m_poServLog, ("GlobalServ init document success!"));
+
+    //初始化博客时间戳列表
+    CBlogTime *poBlogTime = CBlogTime::GetInstance();
+    if (0 != poBlogTime->Init("../data/blog_time.file", m_poServLog))
+    {
+        TSE_LOG_ERROR(m_poServLog, ("GlobalServ init blog_time failed!"));
+        return -16;
+    }
 
     // 初始化命令字信息
     CClientCmd *poClientCmd = CClientCmd::GetInstance();
@@ -459,6 +473,16 @@ int CGlobalServ::Init()
     else
     {
         TSE_LOG_INFO(m_poServLog, ("GlobalServ init func open success!"));
+    }
+
+    // 加载appsflyer_countries
+    if (0 != CAppsflyerCountries::Update())
+    {
+        TSE_LOG_ERROR(m_poServLog, ("GlobalServ init appsflyers failed!"));
+    }
+    else
+    {
+        TSE_LOG_INFO(m_poServLog, ("GlobalServ init appsflyers success!"));
     }
 
     TSE_LOG_INFO(m_poServLog, ("GlobalServ init all success!"));

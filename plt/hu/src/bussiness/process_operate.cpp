@@ -116,7 +116,7 @@ TINT32 CProcessOperate::ProcessCmd_GemRecharge(SSession *pstSession, TBOOL &bNee
 
     TFLOAT32 fWhiteWeekMaxIap = 0.0;
     TBOOL bIsWhiteUser = CIAPWhiteList::bIsWhitePlayer(tbPlayer.m_nUid, fWhiteWeekMaxIap);
-    TFLOAT32 fIapNum = CCommonLogic::GetIapNumByRechargeGem(udwRechargeGem);
+    TFLOAT32 fIapNum = CCommonLogic::GetIapPayCent(pstSession->m_stReqParam.m_szItemId) / 100.0;
 
 
     // 1. 发送获取数据的请求
@@ -132,7 +132,6 @@ TINT32 CProcessOperate::ProcessCmd_GemRecharge(SSession *pstSession, TBOOL &bNee
         TFLOAT32 fWeekGemRecharge = tbLogin.m_jWeek_gem_recharge[0].asFloat();
         TSE_LOG_DEBUG(pstSession->m_poServLog, ("ProcessCmd_GemRecharge: [uid=%u] [bIsWhiteUser=%u fWeekGemRecharge=%f fIapNum=%f fWhiteWeekMaxIap=%f ] [seq=%u]",
             tbPlayer.m_nUid, bIsWhiteUser, fWeekGemRecharge, fIapNum, fWhiteWeekMaxIap, pstSession->m_udwSeqNo));
-
 
         if (bIsWhiteUser && fWeekGemRecharge + fIapNum >= fWhiteWeekMaxIap)
         {
@@ -241,75 +240,25 @@ TINT32 CProcessOperate::ProcessCmd_GemRecharge(SSession *pstSession, TBOOL &bNee
                 return -3;
             }
 
-            pstSession->m_stReqParam.m_ucIsSandBox = jTmp["sandbox"].asInt();
+            if (pstSession->m_stReqParam.m_ucIsSandBox == 0)
+            {
+                pstSession->m_stReqParam.m_ucIsSandBox = jTmp["sandbox"].asInt();
+            }
         }
         */
-        /*
-        if(0 == dwRechargeType)
-        {
-        TCHAR szPromoteData[MAX_JSON_LEN];
-        TCHAR szUrl[1024];
-        memset(szPromoteData, 0, sizeof(szPromoteData));
-        memset(szUrl, 0, sizeof(szUrl));
-        sprintf(szUrl, "%s?request=command=gem_recharge&sid=%u&uid=%u&instant_id=%ld&project_id=%ld&tran_id=%s&timestamp=%u&gems=%u&is_max_attack=%d", CConfBase::GetString("iap_url_pre", "serv_url").c_str(),
-        pstSession->m_stReqParam.m_udwSvrId, pstSession->m_stReqParam.m_udwUserId, ddwInstantId, ddwProjectId,
-        sTransId.c_str(), pstSession->m_stReqParam.m_udwInReqTime, udwRechargeGem, CItemLogic::HasTrialItemOrUnlock(pstUser));
 
-        TSE_LOG_INFO(pstSession->m_poServLog, ("Url:%s [seq=%u]", szUrl, pstSession->m_stUserInfo.m_udwBSeqNo));
-
-        if(CURLE_OK != CToolBase::ResFromUrl(szUrl, szPromoteData))
-        {
-        pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__GET_IAP_FAIL;
-        TSE_LOG_ERROR(pstSession->m_poServLog, ("get IAPDesc failed. [seq=%u]", pstSession->m_stUserInfo.m_udwBSeqNo));
-        return -2;
-        }
-
-        for(TUINT32 udwIdx = 0; udwIdx < strlen(szPromoteData); ++udwIdx)
-        {
-        if(szPromoteData[udwIdx] == '\n')
-        {
-        szPromoteData[udwIdx] = ' ';
-        }
-        }
-
-        Json::Reader reader;
-        pstSession->m_JsonValue.clear();
-        if(FALSE == reader.parse(szPromoteData, pstSession->m_JsonValue))
-        {
-        pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__GET_IAP_FAIL;
-        TSE_LOG_ERROR(pstSession->m_poServLog, ("parse IAPDesc failed. [seq=%u]", pstSession->m_udwSeqNo));
-        TSE_LOG_ERROR(pstSession->m_poServLog, ("IapDesc: %s [seq=%u]", szPromoteData, pstSession->m_stUserInfo.m_udwBSeqNo));
-        return -3;
-        }
-        if(!pstSession->m_JsonValue.isMember("res_data")
-        || !pstSession->m_JsonValue["res_data"].isArray()
-        || !pstSession->m_JsonValue["res_data"][0u].isMember("data")
-        || !pstSession->m_JsonValue["res_data"][0u]["data"].isArray()
-        || !pstSession->m_JsonValue["res_data"][0u]["data"][0u].isMember("data")
-        || !pstSession->m_JsonValue["res_data"][0u]["data"][0u]["data"].isMember("recharge"))
-        {
-        pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__GET_IAP_FAIL;
-        TSE_LOG_ERROR(pstSession->m_poServLog, ("IapDesc error.No gem_recharge![seq=%u]", pstSession->m_udwSeqNo));
-        TSE_LOG_ERROR(pstSession->m_poServLog, ("IapDesc: %s [seq=%u]", szPromoteData, pstSession->m_stUserInfo.m_udwBSeqNo));
-        return -4;
-        }
-        if(!pstSession->m_JsonValue.isMember("res_data")
-        || !pstSession->m_JsonValue["res_data"].isArray()
-        || !pstSession->m_JsonValue["res_data"][1u].isMember("data")
-        || !pstSession->m_JsonValue["res_data"][1u]["data"].isArray()
-        || !pstSession->m_JsonValue["res_data"][1u]["data"][0u].isMember("data")
-        || !pstSession->m_JsonValue["res_data"][1u]["data"][0u]["data"].isMember("promote"))
-        {
-        pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__GET_IAP_FAIL;
-        TSE_LOG_ERROR(pstSession->m_poServLog, ("IapDesc error.No iap_promote![seq=%u]", pstSession->m_udwSeqNo));
-        TSE_LOG_ERROR(pstSession->m_poServLog, ("IapDesc: %s [seq=%u]", szPromoteData, pstSession->m_stUserInfo.m_udwBSeqNo));
-        return -5;
-        }
-        pstSession->m_JsonValue["res_data"][0u]["data"][0u]["data"]["promote"] = pstSession->m_JsonValue["res_data"][1u]["data"][0u]["data"]["promote"];
-        pstSession->m_JsonValue = pstSession->m_JsonValue["res_data"][0u]["data"][0u]["data"];
-        }
-        */
         pstSession->m_udwCommandStep = EN_COMMAND_STEP__2;
+
+        if (!bIsWhiteUser && pstSession->m_stReqParam.m_ucIsSandBox != 0)
+        {
+            TSE_LOG_ERROR(CGameInfo::GetInstance()->m_poLog, ("ProcessCmd_GemRecharge: uid=%ld is not in white list but use sandbox[%u] [seq=%u]",
+                pstUser->m_tbPlayer.m_nUid, pstSession->m_stReqParam.m_ucIsSandBox, pstUser->m_udwBSeqNo));
+            //pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__IAP_WHITE_MAX;
+            //return -1;
+            pstSession->m_udwCommandStep = EN_COMMAND_STEP__END;
+            return 0;
+        }
+
         if (0 == dwRechargeType)
         {
             pstSession->m_udwExpectProcedure = EN_EXPECT_PROCEDURE__IAP_SVR;
@@ -504,13 +453,42 @@ TINT32 CProcessOperate::ProcessCmd_GemRecharge(SSession *pstSession, TBOOL &bNee
         tbLogin.Set_Gem_seq(tbLogin.m_nGem_seq + 1);
         tbLogin.Set_Gem(tbLogin.m_nGem + udwRechargeGem);
 
+        if (strcmp(pstSession->m_stReqParam.m_szItemId.c_str(), "1600gems9") == 0
+            && ddwProjectId != 0)
+        {
+            TINT64 ddwExGem = CCommonBase::GetGameBasicVal(EN_GAME_BASIC_IAP_PROMOTE_EX_GEM);
+            /*
+            if (tbLogin.m_nIap_promote_gem_num == 0 && ddwExGem != 0)
+            {
+            TCHAR szTitle[128];
+            sprintf(szTitle, "Accumulate FREE Gems Gifts");
+            TCHAR szContent[4096];
+            sprintf(szContent, "My Lord,\n"
+            "\n"
+            "Congratulations on your purchase of this great gems pack valued USD 99.99!\n"
+            "\n"
+            "To show our gratitude to your continued support, from now on, you will earn 100 more Gems for every purchase of USD 99.99 Pack. For example, if you buy 18,000 gems with USD 99.99 in your First Purchase, you'll get 18,100 Gems on your Second Purchase, and 18,200 gems for your Third Purchase...That is to say, with your accumulated purchases, you will receive a pack of greater value with accumulative free gems gifts.\n"
+            "\n"
+            "Gems are like magic. They are like your right-hand man to boost your city faster and stronger! Also they are like sharp swords to help you revenge hard and quick.\n"
+            "\n"
+            "Be a wise wizard and wield the Gems Magic right! And don't forget to check the gems store where surprises await!\n"
+            "\n"
+            "Cheers,\n"
+            "Blaze of Battle");
+            CMsgBase::SendOperateMail(tbLogin.m_nUid, 0, tbLogin.m_nSid, SYSTEM_ACTIVITY, 2, szTitle, szContent, "", "");
+            }
+            */
+            tbLogin.Set_Gem(tbLogin.m_nGem + tbLogin.m_nIap_promote_gem_num);
+            tbLogin.Set_Iap_promote_gem_num(tbLogin.m_nIap_promote_gem_num + ddwExGem);
+        }
+
         if(tbLogin.m_nGem_buy == 0 && udwRechargeGem != 0)
         {
             CMsgBase::SendEncourageMail(&pstSession->m_stUserInfo.m_tbUserStat, pstSession->m_stReqParam.m_udwSvrId, EN_MAIL_ID__FIRST_IAP);
         }
 
         TINT64 ddwGemAdd = pstSession->m_stUserInfo.m_tbLogin.m_nGem - pstSession->m_ddwGemBegin;
-        TFLOAT32 fDollar = CCommonLogic::GetIapNumByRechargeGem(udwRechargeGem);
+        TFLOAT32 fDollar = CCommonLogic::GetIapPayCent(pstSession->m_stReqParam.m_szItemId) / 100.0;
         CMsgBase::SendOperateMail(tbPlayer.m_nUid,
             EN_MAIL_ID__DELAY_PURCHASE,
             pstSession->m_stReqParam.m_udwSvrId,
@@ -532,27 +510,7 @@ TINT32 CProcessOperate::ProcessCmd_GemRecharge(SSession *pstSession, TBOOL &bNee
 
         //wave@20130122: 真正充值标记
         pstSession->m_ucFakeRecharge = FALSE;
-        //生成一条iap gift记录
-        /* hu不发联盟礼物
-        if(tbPlayer.m_nAlid > 0 && tbPlayer.m_nAlpos > EN_ALLIANCE_POS__REQUEST && 100 != udwRechargeGem)
-        {
-            TINT32 dwRetCode = CCommonLogic::GenIapAlGift(&pstSession->m_stUserInfo.m_tbAlliance, udwRechargeGem,
-                tbLogin.m_nUid, pstSession->m_stUserInfo.m_stAlGifts, &pstSession->m_stUserInfo.m_tbLogin);
-            if(dwRetCode != 0)
-            {
-                TSE_LOG_DEBUG(CGameInfo::GetInstance()->m_poLog, ("ProcessCmd_GemRecharge: gen iap al_gift error[retcode=%d] [seq=%u]",
-                    dwRetCode, pstSession->m_udwSeqNo));
-            }
-            SNoticInfo stNoticInfo;
-            stNoticInfo.Reset();
-            stNoticInfo.SetValue(EN_NOTI_ID__AL_GIFT,
-                "", "",
-                0, 0,
-                0, 0,
-                0, "", 0);
-            CMsgBase::SendNotificationAlliance(CConfBase::GetString("tbxml_project"), pstSession->m_stReqParam.m_udwSvrId, tbPlayer.m_nUid, tbPlayer.m_nAlid / PLAYER_ALLIANCE_ID_OFFSET, stNoticInfo);
-        }
-        */
+
         return 0;
     }
 
@@ -562,6 +520,8 @@ TINT32 CProcessOperate::ProcessCmd_GemRecharge(SSession *pstSession, TBOOL &bNee
 
 TINT32 CProcessOperate::ProcessCmd_AddPersonAlGift(SSession *pstSession, TBOOL &bNeedResponse)
 {
+    return -1;
+
     TINT32 dwPackId = atoi(pstSession->m_stReqParam.m_szKey[0]);
 
     if(pstSession->m_stUserInfo.m_tbPlayer.m_nAlid == 0 ||
@@ -873,7 +833,52 @@ TINT32 CProcessOperate::ProcessCmd_ItemAdd(SSession *pstSession, TBOOL &bNeedRes
     return 0;
 }
 
+TINT32 CProcessOperate::ProcessCmd_ClearDecoration(SSession *pstSession, TBOOL &bNeedResponse)
+{
+    string strDecoid = pstSession->m_stReqParam.m_szKey[0];
+    SUserInfo* pstUser = &pstSession->m_stUserInfo;
+    TbDecoration *ptbDecoration = &pstUser->m_tbDecoration;
+    Json::Value& jTmp = ptbDecoration->m_jDecoration_list;
 
+    if (atoi(pstSession->m_stReqParam.m_szKey[0]) >= EN_ITEM_ID__END || !jTmp.isMember(strDecoid))
+    {
+        pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__REQ_PARAM_ERROR;
+        return -1;
+    }
+    if (jTmp[strDecoid]["still_have_num"].asInt() != jTmp[strDecoid]["total_num"].asInt())
+    {
+        pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__REQ_PARAM_ERROR;
+        return -2;
+    }
+    jTmp.removeMember(strDecoid);
+    ptbDecoration->SetFlag(TbDECORATION_FIELD_DECORATION_LIST);
+    return 0;
+}
+
+TINT32 CProcessOperate::ProcessCmd_DeleteLordImage(SSession *pstSession, TBOOL &bNeedResponse)
+{
+    TUINT32 udwImageId = atoi(pstSession->m_stReqParam.m_szKey[0]);
+    SUserInfo* pstUser = &pstSession->m_stUserInfo;
+    TbLord_image *ptbLord_image = &pstUser->m_tbLordImage;
+    Json::Value& jTmp = ptbLord_image->m_jLord_image;
+    Json::Value jImage_list = Json::Value(Json::arrayValue);
+
+    if (udwImageId >= EN_ITEM_ID__END)
+    {
+        pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__REQ_PARAM_ERROR;
+        return -1;
+    }
+    for (TUINT32 udwIdx = 0; udwIdx < jTmp.size(); udwIdx++)
+    {
+        if (udwImageId == jTmp[udwIdx]["id"].asUInt())
+        {
+            continue;
+        }
+        jImage_list.append(jTmp[udwIdx]);
+    }
+    ptbLord_image->Set_Lord_image(jImage_list);
+    return 0;
+}
 
 TINT32 CProcessOperate::ProcessCmd_ItemSet(SSession *pstSession, TBOOL &bNeedResponse)
 {
@@ -1656,7 +1661,7 @@ TINT32 CProcessOperate::Processcmd_AddAlRewardList(SSession* pstSession, TBOOL &
             CSendMessageBase::AddTips(&pstSession->m_stUserInfo, EN_TIPS_TYPE__EVENT_RANK, pstSession->m_stUserInfo.m_tbPlayer.m_nUid, TRUE, udwEventType);
         }
 
-        CSendMessageBase::AddAlEventTips(&pstSession->m_stUserInfo, dwAlid, udwEventType, udwRewardType, dwKey, dwPoint, sScoreList, &stGlobalRes, sEventInfo);
+        //CSendMessageBase::AddAlEventTips(&pstSession->m_stUserInfo, dwAlid, udwEventType, udwRewardType, dwKey, dwPoint, sScoreList, &stGlobalRes, sEventInfo);
         //推送 
         SNoticInfo stNoticInfo;
         stNoticInfo.Reset();
@@ -5129,10 +5134,66 @@ TINT32 CProcessOperate::ProcessCmd_GenAttackMoveAction(SSession *pstSession, TBO
     return 0;
 }
 
+TINT32 CProcessOperate::ProcessCmd_DeleteAction(SSession *pstSession, TBOOL &bNeedResponse)
+{
+    TINT32 dwRetCode = 0;
+    TUINT32 udwUid = pstSession->m_stReqParam.m_udwUserId;
+    TUINT64 uddwActionId = strtoul(pstSession->m_stReqParam.m_szKey[0], NULL, 10);    
+    TUINT32 udwActionType = atoi(pstSession->m_stReqParam.m_szKey[1]);
+
+    if (pstSession->m_udwCommandStep == EN_COMMAND_STEP__INIT)
+    {
+        pstSession->m_udwCommandStep = EN_COMMAND_STEP__1;
+        pstSession->m_udwExpectProcedure = EN_EXPECT_PROCEDURE__AWS;
+        if (udwActionType == EN_ACTION_TYPE_AL_CAN_HELP)
+        {
+            TbAlliance_action tbAl_action;
+            tbAl_action.Set_Suid(udwUid);
+            tbAl_action.Set_Id(uddwActionId);
+            CAwsRequest::DeleteItem(pstSession, &tbAl_action);
+        }
+        else if (udwActionType == EN_ACTION_TYPE_BUFF_NORMAL)
+        {
+            TbAction tbAction;
+            tbAction.Set_Suid(udwUid);
+            tbAction.Set_Id(uddwActionId);
+            CAwsRequest::DeleteItem(pstSession, &tbAction);
+        }
+        else if (udwActionType == EN_ACTION_TYPE_MARCH)
+        {
+            TbMarch_action tbMarch_action;
+            tbMarch_action.Set_Suid(udwUid);
+            tbMarch_action.Set_Id(uddwActionId);
+            CAwsRequest::DeleteItem(pstSession, &tbMarch_action);
+        }
+        else
+        {
+            pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__REQ_PARAM_ERROR;
+            return -1;
+        }
+        dwRetCode = CBaseProcedure::SendAwsRequest(pstSession, EN_SERVICE_TYPE_QUERY_DYNAMODB_REQ);
+        if (dwRetCode < 0)
+        {
+            pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__SEND_REQ_FAILED;
+            TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessCmd_DeleteAction: send req failed [seq=%u]", pstSession->m_stUserInfo.m_udwBSeqNo));
+            return -1;
+        }
+        return 0;
+    }
+
+    if (pstSession->m_udwCommandStep == EN_COMMAND_STEP__1)
+    {
+        pstSession->m_udwCommandStep = EN_COMMAND_STEP__END;
+        TSE_LOG_DEBUG(pstSession->m_poServLog, ("ProcessCmd_DeleteAction: rsp num = %d [seq=%u]", pstSession->m_vecAwsRsp.size(), pstSession->m_stUserInfo.m_udwBSeqNo));
+        return 0;
+    }
+    return 0;
+}
+
 TINT32 CProcessOperate::ProcessCmd_GenIdol(SSession *pstSession, TBOOL &bNeedResponse)
 {
     TINT32 dwRetCode = 0;
-    TUINT32 udwType = strtoul(pstSession->m_stReqParam.m_szKey[0], NULL, 10); //0: add 1:del
+    TUINT32 udwType = strtoul(pstSession->m_stReqParam.m_szKey[0], NULL, 10); //0: add 1:del 2:fix
     TUINT32 udwIdolId = strtoul(pstSession->m_stReqParam.m_szKey[1], NULL, 10);
     TUINT32 udwPos = strtoul(pstSession->m_stReqParam.m_szKey[2], NULL, 10);
     TUINT32 udwBeginTime = strtoul(pstSession->m_stReqParam.m_szKey[3], NULL, 10);
@@ -5235,11 +5296,11 @@ TINT32 CProcessOperate::ProcessCmd_GenIdol(SSession *pstSession, TBOOL &bNeedRes
 
         for (TUINT32 udwIdx = 0; udwIdx < pstSession->m_udwTmpWildNum; udwIdx++)
         {
-            pstSession->m_atbTmpWild[udwIdx].Set_Type(EN_WILD_TYPE__NORMAL);
-            CMapBase::ResetMap(&pstSession->m_atbTmpWild[udwIdx]);
             if (udwType == 0)
             {
                 //set data
+                pstSession->m_atbTmpWild[udwIdx].Set_Type(EN_WILD_TYPE__NORMAL);
+                CMapBase::ResetMap(&pstSession->m_atbTmpWild[udwIdx]);
                 pstSession->m_atbTmpWild[udwIdx].Set_Type(EN_WILD_TYPE__IDOL);
                 pstSession->m_atbTmpWild[udwIdx].Set_Utime(CTimeUtils::GetUnixTime());
                 pstSession->m_atbTmpWild[udwIdx].Set_Bid(CMapBase::GetBlockIdFromPos(udwPos));
@@ -5253,6 +5314,18 @@ TINT32 CProcessOperate::ProcessCmd_GenIdol(SSession *pstSession, TBOOL &bNeedRes
                 else
                 {
                     pstSession->m_atbTmpWild[udwIdx].Set_Pic_index(2);
+                }
+            }
+            else if (udwType == 1)
+            {
+                pstSession->m_atbTmpWild[udwIdx].Set_Type(EN_WILD_TYPE__NORMAL);
+                CMapBase::ResetMap(&pstSession->m_atbTmpWild[udwIdx]);
+            }
+            else
+            {
+                if (pstSession->m_atbTmpWild[udwIdx].m_nPic_index == 2)
+                {
+                    pstSession->m_atbTmpWild[udwIdx].Set_Center_pos(udwPos);
                 }
             }
             // set package
@@ -5323,7 +5396,7 @@ TINT32 CProcessOperate::ProcessCmd_GenIdol(SSession *pstSession, TBOOL &bNeedRes
 TINT32 CProcessOperate::ProcessCmd_GenThrone(SSession *pstSession, TBOOL &bNeedResponse)
 {
     TINT32 dwRetCode = 0;
-    TUINT32 udwType = strtoul(pstSession->m_stReqParam.m_szKey[0], NULL, 10); //0: add 1:del
+    TUINT32 udwType = strtoul(pstSession->m_stReqParam.m_szKey[0], NULL, 10); //0: add 1:del 2:fix
     TUINT32 udwPos = strtoul(pstSession->m_stReqParam.m_szKey[2], NULL, 10);
 
     TUINT32 udwXYSize = CMapBase::GetWildBlockNumByType(pstSession->m_stReqParam.m_udwSvrId, EN_WILD_TYPE__THRONE_NEW);
@@ -5412,11 +5485,11 @@ TINT32 CProcessOperate::ProcessCmd_GenThrone(SSession *pstSession, TBOOL &bNeedR
 
         for (TUINT32 udwIdx = 0; udwIdx < pstSession->m_udwTmpWildNum; udwIdx++)
         {
-            pstSession->m_atbTmpWild[udwIdx].Set_Type(EN_WILD_TYPE__NORMAL);
-            CMapBase::ResetMap(&pstSession->m_atbTmpWild[udwIdx]);
             if (udwType == 0)
             {
                 //set data
+                pstSession->m_atbTmpWild[udwIdx].Set_Type(EN_WILD_TYPE__NORMAL);
+                CMapBase::ResetMap(&pstSession->m_atbTmpWild[udwIdx]);
                 pstSession->m_atbTmpWild[udwIdx].Set_Type(EN_WILD_TYPE__THRONE_NEW);
                 pstSession->m_atbTmpWild[udwIdx].Set_Utime(CTimeUtils::GetUnixTime());
                 pstSession->m_atbTmpWild[udwIdx].Set_Bid(CMapBase::GetBlockIdFromPos(udwPos));
@@ -5424,12 +5497,25 @@ TINT32 CProcessOperate::ProcessCmd_GenThrone(SSession *pstSession, TBOOL &bNeedR
                 if (pstSession->m_atbTmpWild[udwIdx].m_nId == udwPos)
                 {
                     pstSession->m_atbTmpWild[udwIdx].Set_Pic_index(1);
-                    pstSession->m_atbTmpWild[udwIdx].Set_Status(EN_THRONE_STATUS__QUIET_PERIOD);
+                    pstSession->m_atbTmpWild[udwIdx].Set_Status(EN_THRONE_STATUS__CONTEST_PERIOD);
                     pstSession->m_atbTmpWild[udwIdx].Set_Time_end(0);
                 }
                 else
                 {
                     pstSession->m_atbTmpWild[udwIdx].Set_Pic_index(2);
+                    pstSession->m_atbTmpWild[udwIdx].Set_Center_pos(udwPos);
+                }
+            }
+            else if (udwType == 1)
+            {
+                pstSession->m_atbTmpWild[udwIdx].Set_Type(EN_WILD_TYPE__NORMAL);
+                CMapBase::ResetMap(&pstSession->m_atbTmpWild[udwIdx]);
+            }
+            else
+            {
+                if (pstSession->m_atbTmpWild[udwIdx].m_nPic_index == 2)
+                {
+                    pstSession->m_atbTmpWild[udwIdx].Set_Center_pos(udwPos);
                 }
             }
             // set package
@@ -5443,7 +5529,7 @@ TINT32 CProcessOperate::ProcessCmd_GenThrone(SSession *pstSession, TBOOL &bNeedR
             pstSession->m_tbThrone.Set_Sid(pstSession->m_stReqParam.m_udwSvrId);
             pstSession->m_tbThrone.Set_Id(0);
             pstSession->m_tbThrone.Set_Pos(udwPos);
-            pstSession->m_tbThrone.Set_Status(EN_THRONE_STATUS__QUIET_PERIOD);
+            pstSession->m_tbThrone.Set_Status(EN_THRONE_STATUS__CONTEST_PERIOD);
             pstSession->m_tbThrone.Set_End_time(0);
             pstSession->m_tbThrone.m_jInfo = Json::Value(Json::objectValue);
             pstSession->m_tbThrone.m_jInfo["buff"] = CGameInfo::GetInstance()->m_oJsonRoot["game_throne_buff"];
@@ -5465,6 +5551,117 @@ TINT32 CProcessOperate::ProcessCmd_GenThrone(SSession *pstSession, TBOOL &bNeedR
         {
             pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__SEND_REQ_FAILED;
             TSE_LOG_ERROR(pstSession->m_poServLog, ("TableRequest_CityChangeId: send req failed [seq=%u]", pstSession->m_stUserInfo.m_udwBSeqNo));
+            return -5;
+        }
+        return 0;
+    }
+
+    if (pstSession->m_udwCommandStep == EN_COMMAND_STEP__3)
+    {
+        pstSession->m_udwCommandStep = EN_COMMAND_STEP__END;
+        return 0;
+    }
+
+    return 0;
+}
+
+TINT32 CProcessOperate::ProcessCmd_SetThronePeaceTime(SSession *pstSession, TBOOL &bNeedResponse)
+{
+    TINT32 dwRetCode = 0;
+    TUINT32 udwPos = strtoul(pstSession->m_stReqParam.m_szKey[0], NULL, 10);
+    TUINT32 udwTime = strtoul(pstSession->m_stReqParam.m_szKey[1], NULL, 10);
+    TUINT64 udwKey = strtoul(pstSession->m_stReqParam.m_szKey[2], NULL, 10);
+
+    if (pstSession->m_udwCommandStep == EN_COMMAND_STEP__INIT)
+    {
+        //拉取地图和王座
+        // set request package
+        pstSession->ResetAwsInfo();
+
+        CAwsRequest::MapGet(pstSession, udwPos);
+        CAwsRequest::ThroneGet(pstSession, pstSession->m_stReqParam.m_udwSvrId);
+
+        // send request
+        pstSession->m_udwCommandStep = EN_COMMAND_STEP__1;
+        pstSession->m_udwExpectProcedure = EN_EXPECT_PROCEDURE__AWS;
+        bNeedResponse = TRUE;
+        dwRetCode = CBaseProcedure::SendAwsRequest(pstSession, EN_SERVICE_TYPE_QUERY_DYNAMODB_REQ);
+        if (dwRetCode < 0)
+        {
+            pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__SEND_REQ_FAILED;
+            TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessCmd_SetThronePeaceTime: send req failed [seq=%u]", pstSession->m_stUserInfo.m_udwBSeqNo));
+            return -1;
+        }
+        return 0;
+    }
+
+    if (pstSession->m_udwCommandStep == EN_COMMAND_STEP__1)
+    {
+        // next procedure
+        pstSession->m_udwCommandStep = EN_COMMAND_STEP__2;
+
+        pstSession->m_udwIdolNum = 0;
+
+        AwsRspInfo *pstRes = NULL;
+        for (TUINT32 udwIdx = 0; udwIdx < pstSession->m_vecAwsRsp.size(); ++udwIdx)
+        {
+            pstRes = pstSession->m_vecAwsRsp[udwIdx];
+
+            string strTableRawName = CCommonFunc::GetTableRawName(pstRes->sTableName);
+            if (strTableRawName == EN_AWS_TABLE_MAP)
+            {
+                CAwsResponse::OnGetItemRsp(*pstSession->m_vecAwsRsp[udwIdx], &pstSession->m_tbTmpMap);
+            }
+            else if (strTableRawName == EN_AWS_TABLE_THRONE)
+            {
+                CAwsResponse::OnGetItemRsp(*pstSession->m_vecAwsRsp[udwIdx], &pstSession->m_tbThrone);
+            }
+        }
+    }
+
+    // 4. 处理
+    if (pstSession->m_udwCommandStep == EN_COMMAND_STEP__2)
+    {
+        // next procedure
+        pstSession->m_udwCommandStep = EN_COMMAND_STEP__3;
+        pstSession->m_udwExpectProcedure = EN_EXPECT_PROCEDURE__AWS;
+
+        if (pstSession->m_tbTmpMap.m_nType != EN_WILD_TYPE__THRONE_NEW
+            || pstSession->m_tbThrone.m_nPos != udwPos
+            || (udwKey != 77398022 && pstSession->m_tbThrone.m_nAlid > 0))
+        {
+            return -1;
+        }
+
+        TUINT32 udwEndTime = CTimeUtils::GetUnixTime() + udwTime;
+        // set package
+        pstSession->ResetAwsInfo();
+
+        pstSession->m_tbTmpMap.Set_Status(EN_THRONE_STATUS__PEACE_TIME);
+        pstSession->m_tbTmpMap.Set_Time_end(udwEndTime);
+        CAwsRequest::UpdateItem(pstSession, &pstSession->m_tbTmpMap);
+
+        pstSession->m_tbThrone.Set_Status(EN_THRONE_STATUS__PEACE_TIME);
+        pstSession->m_tbThrone.Set_End_time(udwEndTime);
+        CAwsRequest::UpdateItem(pstSession, &pstSession->m_tbThrone);
+
+        TbMarch_action tbMarch;
+        tbMarch.Set_Id(CActionBase::GenMapActionId(pstSession->m_tbTmpMap.m_nSid, pstSession->m_tbTmpMap.m_nId));
+        tbMarch.Set_Mclass(EN_ACTION_MAIN_CLASS__TIMER);
+        tbMarch.Set_Sclass(EN_ACTION_SEC_CLASS__THRONE_PERIOD);
+        tbMarch.Set_Status(EN_TITMER_THRONE_PERIOD_STATUS__PEACE_TIME);
+        tbMarch.Set_Etime(udwEndTime);
+        tbMarch.Set_Sid(pstSession->m_tbTmpMap.m_nSid);
+        tbMarch.Set_Tpos(pstSession->m_tbTmpMap.m_nId);
+        CAwsRequest::UpdateItem(pstSession, &tbMarch);
+
+        // send request
+        bNeedResponse = TRUE;
+        dwRetCode = CBaseProcedure::SendAwsRequest(pstSession, EN_SERVICE_TYPE_QUERY_DYNAMODB_REQ);
+        if (dwRetCode < 0)
+        {
+            pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__SEND_REQ_FAILED;
+            TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessCmd_SetThronePeaceTime: send req failed [seq=%u]", pstSession->m_stUserInfo.m_udwBSeqNo));
             return -5;
         }
         return 0;
@@ -6003,5 +6200,90 @@ TINT32 CProcessOperate::ProcessCmd_GetRank(SSession *pstSession, TBOOL &bNeedRes
     }
 
     pstSession->m_udwCommandStep = EN_COMMAND_STEP__END;
+    return 0;
+}
+
+TINT32 CProcessOperate::ProcessCmd_RecallInvalidRallyReinforce(SSession *pstSession, TBOOL &bNeedResponse)
+{
+    SUserInfo *pstUser = &pstSession->m_stUserInfo;
+
+    set<TINT64> setRallyWarId;
+
+    for (TUINT32 udwIdx = 0; udwIdx < pstUser->m_udwMarchNum; udwIdx++)
+    {
+        if (pstUser->m_atbMarch[udwIdx].m_nSal == pstUser->m_tbAlliance.m_nAid
+            && pstUser->m_atbMarch[udwIdx].m_nSclass == EN_ACTION_SEC_CLASS__RALLY_WAR
+            && pstUser->m_atbMarch[udwIdx].m_nStatus != EN_MARCH_STATUS__RETURNING)
+        {
+            setRallyWarId.insert(pstUser->m_atbMarch[udwIdx].m_nId);
+        }
+    }
+
+    for (TUINT32 udwIdx = 0; udwIdx < pstUser->m_udwMarchNum; udwIdx++)
+    {
+        if (pstUser->m_atbMarch[udwIdx].m_nSuid == pstUser->m_tbPlayer.m_nUid
+            && pstUser->m_atbMarch[udwIdx].m_nSclass == EN_ACTION_SEC_CLASS__RALLY_REINFORCE
+            && pstUser->m_atbMarch[udwIdx].m_nStatus != EN_MARCH_STATUS__RETURNING
+            && setRallyWarId.count(pstUser->m_atbMarch[udwIdx].m_nTid) == 0)
+        {
+            CActionBase::ReturnMarch(&pstUser->m_atbMarch[udwIdx]);
+            pstUser->m_aucMarchFlag[udwIdx] = EN_TABLE_UPDT_FLAG__CHANGE;
+        }
+    }
+
+    return 0;
+}
+
+TINT32 CProcessOperate::ProcessCmd_MinusTroop( SSession *pstSession, TBOOL &bNeedResponse )
+{
+    TCHAR *pszTroop = pstSession->m_stReqParam.m_szKey[0];
+    CGameInfo *poGameInfo = CGameInfo::GetInstance();
+
+    TUINT32 udwTroopNum = EN_TROOP_TYPE__END;
+    SCommonTroop stTroop;
+    stTroop.Reset();
+    CCommonFunc::GetArrayFromString(pszTroop, ':', stTroop.m_addwNum, udwTroopNum);
+
+    SCityInfo *pstCity = &pstSession->m_stUserInfo.m_stCityInfo;
+
+    // minus troop
+    TINT32 dwRetCode = 0;
+    for(TINT32 idx = 0; idx < EN_TROOP_TYPE__END; idx++)
+    {
+        if(stTroop.m_addwNum[idx] == 0)
+        {
+            continue;
+        }
+
+        if(pstCity->m_stTblData.m_bTroop[0].m_addwNum[idx] >= stTroop.m_addwNum[idx])
+        {
+            pstCity->m_stTblData.m_bTroop[0].m_addwNum[idx] -= stTroop.m_addwNum[idx];
+            pstCity->m_stTblData.SetFlag(TbCITY_FIELD_TROOP);
+        }
+        else
+        {
+            pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__REQ_PARAM_ERROR;
+            dwRetCode = -1;
+            break;
+        }
+    }
+
+    return dwRetCode;
+}
+
+TINT32 CProcessOperate::ProcessCmd_AddBufTime( SSession *pstSession, TBOOL &bNeedResponse )
+{
+    TbAction *ptbAction = pstSession->m_stUserInfo.m_atbAction;
+    TUINT32 udwCurTime = CTimeUtils::GetUnixTime();
+
+    for(TINT32 idx = 0; idx < pstSession->m_stUserInfo.m_udwActionNum; idx++)
+    {
+        ptbAction = &pstSession->m_stUserInfo.m_atbAction[idx];
+        if(ptbAction->m_nMclass == EN_ACTION_MAIN_CLASS__ITEM)
+        {
+            ptbAction->Set_Etime(ptbAction->m_nEtime + 6 * 3600);
+            pstSession->m_stUserInfo.m_aucActionFlag[idx] = EN_TABLE_UPDT_FLAG__CHANGE;
+        }
+    }
     return 0;
 }

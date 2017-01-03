@@ -375,7 +375,7 @@ TINT32 CItemLogic::UseItem(SUserInfo *pstUser, SCityInfo *pstCity, TUINT32 udwIt
     for(TUINT32 udwIdx = 0; udwIdx < stEffectInfo.udwTotalNum; ++udwIdx)
     {
         // vip point
-        if(stEffectInfo.aRewardList[udwIdx].udwType == EN_GLOBALRES_TYPE_VIP_POINT && pstUser->m_tbPlayer.m_nVip_point >= CPlayerBase::GetMaxVipPoint())
+        if (stEffectInfo.aRewardList[udwIdx].udwType == EN_GLOBALRES_TYPE_VIP_POINT && pstUser->m_tbPlayer.m_nVip_point >= CPlayerBase::GetMaxVipPoint())
         {
             return EN_RET_CODE__VIP_LEVEL_REACH_THE_TOP;
         }
@@ -522,7 +522,7 @@ TINT32 CItemLogic::BuyAndUseItem(SUserInfo *pstUser, SCityInfo *pstCity, TUINT32
     for(TUINT32 udwIdx = 0; udwIdx < stEffectInfo.udwTotalNum; ++udwIdx)
     {
         // vip point
-        if(stEffectInfo.aRewardList[udwIdx].udwType == EN_GLOBALRES_TYPE_VIP_POINT && pstUser->m_tbPlayer.m_nVip_point >= CPlayerBase::GetMaxVipPoint())
+        if (stEffectInfo.aRewardList[udwIdx].udwType == EN_GLOBALRES_TYPE_VIP_POINT && pstUser->m_tbPlayer.m_nVip_point >= CPlayerBase::GetMaxVipPoint())
         {
             return EN_RET_CODE__VIP_LEVEL_REACH_THE_TOP;
         }
@@ -1047,4 +1047,18 @@ TINT32 CItemLogic::SyncPassMarchAction(TbMarch_action *ptbAction, SUserInfo *pst
     }
 
     return 0;
+}
+TINT32 CItemLogic::CanUnlockVipStage(SUserInfo *pstUser)
+{
+    TbPlayer *ptbPlayer = &pstUser->m_tbPlayer;
+    TINT64 ddwVipPoint = ptbPlayer->m_nVip_point;
+    TINT32 dwRetCode = 0;
+
+    TINT64 ddwMaxPoint = CPlayerBase::GetMaxVipPoint(ptbPlayer);
+    if (ddwVipPoint < ddwMaxPoint || ptbPlayer->m_nVip_stage >= CPlayerBase::GetMaxVipStage())
+    {
+        dwRetCode = EN_RET_CODE__REQ_PARAM_ERROR;
+        return dwRetCode;
+    }
+    return dwRetCode;
 }

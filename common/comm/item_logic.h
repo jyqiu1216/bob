@@ -35,5 +35,7 @@ public:
     static TINT32 HasTrialItemOrUnlock(SUserInfo *pstUser);
 
     static TINT32 SyncPassMarchAction(TbMarch_action *ptbAction, SUserInfo *pstUser);
+
+    static TINT32 CanUnlockVipStage(SUserInfo *pstUser);
 };
 #endif

@@ -41,7 +41,7 @@ void protobuf_AssignDesc_client_5fnetio_2eproto() {
       "client_netio.proto");
   GOOGLE_CHECK(file != NULL);
   ClientRequest_descriptor_ = file->message_type(0);
-  static const int ClientRequest_offsets_[14] = {
+  static const int ClientRequest_offsets_[15] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ClientRequest, service_type_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ClientRequest, seq_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ClientRequest, time_),
@@ -56,6 +56,7 @@ void protobuf_AssignDesc_client_5fnetio_2eproto() {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ClientRequest, clv_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ClientRequest, did_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ClientRequest, login_time_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ClientRequest, cmd_),
   };
   ClientRequest_reflection_ =
     ::google::protobuf::internal::GeneratedMessageReflection::NewGeneratedMessageReflection(
@@ -151,21 +152,22 @@ void protobuf_AddDesc_client_5fnetio_2eproto() {
 
   ::google::protobuf::DescriptorPool::InternalAddGeneratedFile(
     "\n\022client_netio.proto\022\025client_netio_proto"
-    "col\"\342\001\n\rClientRequest\022\024\n\014service_type\030\001 "
+    "col\"\357\001\n\rClientRequest\022\024\n\014service_type\030\001 "
     "\002(\005\022\013\n\003seq\030\002 \002(\r\022\014\n\004time\030\003 \002(\r\022\013\n\003uid\030\004 "
     "\002(\r\022\013\n\003sid\030\005 \002(\005\022\013\n\003aid\030\006 \002(\005\022\017\n\007req_url"
     "\030\007 \001(\014\022\017\n\007m_scene\030\010 \001(\005\022\r\n\005m_sid\030\t \001(\005\022\r"
     "\n\005m_pos\030\n \001(\005\022\013\n\003cid\030\013 \001(\005\022\013\n\003clv\030\014 \001(\005\022"
-    "\013\n\003did\030\r \001(\t\022\022\n\nlogin_time\030\016 \001(\003\"\347\001\n\016Cli"
-    "entResponse\022\024\n\014service_type\030\001 \002(\005\022\020\n\010ret"
-    "_code\030\002 \002(\005\022\022\n\nfresh_code\030\003 \002(\005\022\013\n\003seq\030\004"
-    " \002(\r\022\017\n\007svr_seq\030\005 \002(\r\022\021\n\tgame_time\030\006 \002(\r"
-    "\022\021\n\tcost_time\030\007 \002(\r\022\013\n\003uid\030\010 \002(\r\022\013\n\003sid\030"
-    "\t \002(\005\022;\n\016table_dom_data\030\n \003(\0132#.client_n"
-    "etio_protocol.TableDomData\"x\n\014TableDomDa"
-    "ta\022\022\n\ntable_name\030\001 \002(\t\022\021\n\tupdt_type\030\002 \002("
-    "\005\022\020\n\010seq_type\030\003 \002(\005\022\020\n\010dom_type\030\004 \002(\005\022\013\n"
-    "\003seq\030\005 \002(\003\022\020\n\010dom_data\030\006 \002(\014", 628);
+    "\013\n\003did\030\r \001(\t\022\022\n\nlogin_time\030\016 \001(\003\022\013\n\003cmd\030"
+    "\017 \001(\t\"\347\001\n\016ClientResponse\022\024\n\014service_type"
+    "\030\001 \002(\005\022\020\n\010ret_code\030\002 \002(\005\022\022\n\nfresh_code\030\003"
+    " \002(\005\022\013\n\003seq\030\004 \002(\r\022\017\n\007svr_seq\030\005 \002(\r\022\021\n\tga"
+    "me_time\030\006 \002(\r\022\021\n\tcost_time\030\007 \002(\r\022\013\n\003uid\030"
+    "\010 \002(\r\022\013\n\003sid\030\t \002(\005\022;\n\016table_dom_data\030\n \003"
+    "(\0132#.client_netio_protocol.TableDomData\""
+    "x\n\014TableDomData\022\022\n\ntable_name\030\001 \002(\t\022\021\n\tu"
+    "pdt_type\030\002 \002(\005\022\020\n\010seq_type\030\003 \002(\005\022\020\n\010dom_"
+    "type\030\004 \002(\005\022\013\n\003seq\030\005 \002(\003\022\020\n\010dom_data\030\006 \002("
+    "\014", 641);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "client_netio.proto", &protobuf_RegisterTypes);
   ClientRequest::default_instance_ = new ClientRequest();
@@ -211,6 +213,7 @@ const int ClientRequest::kCidFieldNumber;
 const int ClientRequest::kClvFieldNumber;
 const int ClientRequest::kDidFieldNumber;
 const int ClientRequest::kLoginTimeFieldNumber;
+const int ClientRequest::kCmdFieldNumber;
 #endif  // !defined(_MSC_VER) || _MSC_VER >= 1900
 
 ClientRequest::ClientRequest()
@@ -247,6 +250,7 @@ void ClientRequest::SharedCtor() {
   clv_ = 0;
   did_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   login_time_ = GOOGLE_LONGLONG(0);
+  cmd_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -258,6 +262,7 @@ ClientRequest::~ClientRequest() {
 void ClientRequest::SharedDtor() {
   req_url_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   did_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  cmd_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   if (this != default_instance_) {
   }
 }
@@ -312,11 +317,15 @@ void ClientRequest::Clear() {
     }
     m_scene_ = 0;
   }
-  if (_has_bits_[8 / 32] & 16128u) {
+  if (_has_bits_[8 / 32] & 32512u) {
     ZR_(m_sid_, cid_);
-    ZR_(login_time_, clv_);
+    clv_ = 0;
     if (has_did()) {
       did_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+    }
+    login_time_ = GOOGLE_LONGLONG(0);
+    if (has_cmd()) {
+      cmd_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
     }
   }
 
@@ -544,6 +553,23 @@ bool ClientRequest::MergePartialFromCodedStream(
         } else {
           goto handle_unusual;
         }
+        if (input->ExpectTag(122)) goto parse_cmd;
+        break;
+      }
+
+      // optional string cmd = 15;
+      case 15: {
+        if (tag == 122) {
+         parse_cmd:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadString(
+                input, this->mutable_cmd()));
+          ::google::protobuf::internal::WireFormat::VerifyUTF8StringNamedField(
+            this->cmd().data(), this->cmd().length(),
+            ::google::protobuf::internal::WireFormat::PARSE,
+            "client_netio_protocol.ClientRequest.cmd");
+        } else {
+          goto handle_unusual;
+        }
         if (input->ExpectAtEnd()) goto success;
         break;
       }
@@ -649,6 +675,16 @@ void ClientRequest::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormatLite::WriteInt64(14, this->login_time(), output);
   }
 
+  // optional string cmd = 15;
+  if (has_cmd()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8StringNamedField(
+      this->cmd().data(), this->cmd().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE,
+      "client_netio_protocol.ClientRequest.cmd");
+    ::google::protobuf::internal::WireFormatLite::WriteStringMaybeAliased(
+      15, this->cmd(), output);
+  }
+
   if (_internal_metadata_.have_unknown_fields()) {
     ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
         unknown_fields(), output);
@@ -735,6 +771,17 @@ void ClientRequest::SerializeWithCachedSizes(
   // optional int64 login_time = 14;
   if (has_login_time()) {
     target = ::google::protobuf::internal::WireFormatLite::WriteInt64ToArray(14, this->login_time(), target);
+  }
+
+  // optional string cmd = 15;
+  if (has_cmd()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8StringNamedField(
+      this->cmd().data(), this->cmd().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE,
+      "client_netio_protocol.ClientRequest.cmd");
+    target =
+      ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
+        15, this->cmd(), target);
   }
 
   if (_internal_metadata_.have_unknown_fields()) {
@@ -847,7 +894,7 @@ int ClientRequest::ByteSize() const {
     }
 
   }
-  if (_has_bits_[8 / 32] & 16128u) {
+  if (_has_bits_[8 / 32] & 32512u) {
     // optional int32 m_sid = 9;
     if (has_m_sid()) {
       total_size += 1 +
@@ -888,6 +935,13 @@ int ClientRequest::ByteSize() const {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::Int64Size(
           this->login_time());
+    }
+
+    // optional string cmd = 15;
+    if (has_cmd()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::StringSize(
+          this->cmd());
     }
 
   }
@@ -967,6 +1021,10 @@ void ClientRequest::MergeFrom(const ClientRequest& from) {
     if (from.has_login_time()) {
       set_login_time(from.login_time());
     }
+    if (from.has_cmd()) {
+      set_has_cmd();
+      cmd_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.cmd_);
+    }
   }
   if (from._internal_metadata_.have_unknown_fields()) {
     mutable_unknown_fields()->MergeFrom(from.unknown_fields());
@@ -1012,6 +1070,7 @@ void ClientRequest::InternalSwap(ClientRequest* other) {
   std::swap(clv_, other->clv_);
   did_.Swap(&other->did_);
   std::swap(login_time_, other->login_time_);
+  cmd_.Swap(&other->cmd_);
   std::swap(_has_bits_[0], other->_has_bits_[0]);
   _internal_metadata_.Swap(&other->_internal_metadata_);
   std::swap(_cached_size_, other->_cached_size_);
@@ -1422,6 +1481,60 @@ void ClientRequest::clear_login_time() {
   set_has_login_time();
   login_time_ = value;
   // @@protoc_insertion_point(field_set:client_netio_protocol.ClientRequest.login_time)
+}
+
+// optional string cmd = 15;
+bool ClientRequest::has_cmd() const {
+  return (_has_bits_[0] & 0x00004000u) != 0;
+}
+void ClientRequest::set_has_cmd() {
+  _has_bits_[0] |= 0x00004000u;
+}
+void ClientRequest::clear_has_cmd() {
+  _has_bits_[0] &= ~0x00004000u;
+}
+void ClientRequest::clear_cmd() {
+  cmd_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  clear_has_cmd();
+}
+ const ::std::string& ClientRequest::cmd() const {
+  // @@protoc_insertion_point(field_get:client_netio_protocol.ClientRequest.cmd)
+  return cmd_.GetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+ void ClientRequest::set_cmd(const ::std::string& value) {
+  set_has_cmd();
+  cmd_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
+  // @@protoc_insertion_point(field_set:client_netio_protocol.ClientRequest.cmd)
+}
+ void ClientRequest::set_cmd(const char* value) {
+  set_has_cmd();
+  cmd_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
+  // @@protoc_insertion_point(field_set_char:client_netio_protocol.ClientRequest.cmd)
+}
+ void ClientRequest::set_cmd(const char* value, size_t size) {
+  set_has_cmd();
+  cmd_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
+      ::std::string(reinterpret_cast<const char*>(value), size));
+  // @@protoc_insertion_point(field_set_pointer:client_netio_protocol.ClientRequest.cmd)
+}
+ ::std::string* ClientRequest::mutable_cmd() {
+  set_has_cmd();
+  // @@protoc_insertion_point(field_mutable:client_netio_protocol.ClientRequest.cmd)
+  return cmd_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+ ::std::string* ClientRequest::release_cmd() {
+  // @@protoc_insertion_point(field_release:client_netio_protocol.ClientRequest.cmd)
+  clear_has_cmd();
+  return cmd_.ReleaseNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+ void ClientRequest::set_allocated_cmd(::std::string* cmd) {
+  if (cmd != NULL) {
+    set_has_cmd();
+  } else {
+    clear_has_cmd();
+  }
+  cmd_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), cmd);
+  // @@protoc_insertion_point(field_set_allocated:client_netio_protocol.ClientRequest.cmd)
 }
 
 #endif  // PROTOBUF_INLINE_NOT_IN_HEADERS

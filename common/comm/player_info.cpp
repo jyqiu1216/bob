@@ -37,6 +37,9 @@ TVOID SUserInfo::Reset()
     udwRewardWinGetType = 0;
     m_tbBounty.Reset();
 
+    m_tbLordImage.Reset();
+    m_tbDecoration.Reset();
+
     m_udwTmpFinishBountyGoal = 0;
     m_vTmpFinishBountyBase.clear();
 
@@ -269,16 +272,19 @@ TVOID SUserInfo::Reset()
     m_stScore.Reset();
     
     m_stAlGifts.Reset();
-    for(TUINT32 idx = 0; idx < MAX_AL_IAP_GIFT_NUM * 2; idx++)
+    for (TUINT32 idx = 0; idx < MAX_AL_IAP_GIFT_NUM_SVR; idx++)
     {
         if(m_atbAlGiftReward[idx].m_nUid)
         {
             m_atbAlGiftReward[idx].Reset();
         }
+        m_aucAlGiftRewardFlag[idx] = EN_TABLE_UPDT_FLAG__UNCHANGE;
     }
     m_udwAlGiftRewardNum = 0;
+    m_tbClearAlGift.Reset();
 
     m_ddwRawVipPoint = 0;
+    m_dwRawVipLevel = 0;
     m_bTodayFirstLogin = FALSE;
 
     m_udwMailSendNum = 0;

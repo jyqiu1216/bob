@@ -44,7 +44,7 @@ enum ETbMailOpenType
 #define	TBMAIL_REWARD_MAX_NUM	1
 typedef	BinBuf<SGlobalRes, TBMAIL_REWARD_MAX_NUM>		TbMail_Reward;
 
-#define	TBMAIL_EX_REWARD_MAX_NUM	20
+#define	TBMAIL_EX_REWARD_MAX_NUM	100
 typedef	BinBuf<SOneGlobalRes, TBMAIL_EX_REWARD_MAX_NUM>		TbMail_Ex_reward;
 
 class TbMail : public AwsTable

@@ -355,7 +355,7 @@ TVOID CCommonBase::OccupyWild(TbPlayer *ptbPlayer, TbMap *ptbMap, TbMarch_action
     ptbMap->Set_Uid(ptbPlayer->m_nUid);
     ptbMap->Set_Ulevel(ptbPlayer->m_nLevel);
     ptbMap->Set_Uname(ptbPlayer->m_sUin);
-    ptbMap->Set_Vip_level(CPlayerBase::GetRawVipLevel(ptbPlayer->m_nVip_point));
+    ptbMap->Set_Vip_level(CPlayerBase::GetRawVipLevel(ptbPlayer, ptbPlayer->m_nVip_point));
     ptbMap->Set_Vip_etime(ptbPlayer->m_nVip_etime);
     if(ptbPlayer->m_nAlpos)
     {
@@ -397,7 +397,7 @@ TVOID CCommonBase::CampWild(TbPlayer *ptbPlayer, TbMap *ptbMap, TbMarch_action *
     ptbMap->Set_Uid(ptbPlayer->m_nUid);
     ptbMap->Set_Ulevel(ptbPlayer->m_nLevel);
     ptbMap->Set_Uname(ptbPlayer->m_sUin);
-    ptbMap->Set_Vip_level(CPlayerBase::GetRawVipLevel(ptbPlayer->m_nVip_point));
+    ptbMap->Set_Vip_level(CPlayerBase::GetRawVipLevel(ptbPlayer, ptbPlayer->m_nVip_point));
     ptbMap->Set_Vip_etime(ptbPlayer->m_nVip_etime);
     if (ptbPlayer->m_nAlpos)
     {
@@ -725,7 +725,7 @@ TVOID CCommonBase::SetMapToNewCity(TbMap *pstMapItem, TbPlayer *pstPlayer, SCity
     pstMapItem->Set_Bid(CMapBase::GetBlockIdFromPos(pstMapItem->m_nId));
     pstMapItem->Set_Res_rate(0);
     pstMapItem->Set_Res_time(0);
-    pstMapItem->Set_Vip_level(CPlayerBase::GetRawVipLevel(pstPlayer->m_nVip_point));
+    pstMapItem->Set_Vip_level(CPlayerBase::GetRawVipLevel(pstPlayer, pstPlayer->m_nVip_point));
     pstMapItem->Set_Vip_etime(pstPlayer->m_nVip_etime);
     pstMapItem->Set_Avatar(pstPlayer->m_nAvatar);
     pstMapItem->Set_Prison_flag(udwPrisonFlag);
@@ -760,7 +760,7 @@ TVOID CCommonBase::SetMapToNewCity(TbMap *pstMapItem, TbPlayer *pstPlayer, SCity
 TINT32 CCommonBase::AddVipPoint(SUserInfo *pstUserInfo, SCityInfo *pstCityInfo, TUINT32 udwVipPointAdd)
 {
     pstUserInfo->m_tbPlayer.Set_Vip_point(pstUserInfo->m_tbPlayer.m_nVip_point + udwVipPointAdd);
-    if(pstUserInfo->m_tbPlayer.m_nVip_point > CPlayerBase::GetMaxVipPoint())
+    if (pstUserInfo->m_tbPlayer.m_nVip_point > CPlayerBase::GetMaxVipPoint())
     {
         pstUserInfo->m_tbPlayer.Set_Vip_point(CPlayerBase::GetMaxVipPoint());
     }

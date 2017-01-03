@@ -238,6 +238,10 @@ TINT32 CBufferBase::ComputeItemBuff(SCityInfo *pstCity, SUserInfo *pstUser)
 {
     for(TUINT32 udwIdx = 0; udwIdx < pstUser->m_udwActionNum; ++udwIdx)
     {
+        if (pstUser->m_aucActionFlag[udwIdx] == EN_TABLE_UPDT_FLAG__DEL)
+        {
+            continue;
+        }
         if(pstUser->m_atbAction[udwIdx].m_nMclass == EN_ACTION_MAIN_CLASS__ITEM)
         {
             TINT32 dwBufferNum = pstUser->m_atbAction[udwIdx].m_bParam[0].m_stItem.m_ddwNum;
@@ -270,21 +274,42 @@ TINT32 CBufferBase::ComputeWildBuff(SCityInfo *pstCity, SUserInfo *pstUser)
 
 TINT32 CBufferBase::ComputeVipBuff(SCityInfo *pstCity, SUserInfo *pstUser)
 {
-    TINT32 dwVipLevel = CPlayerBase::GetVipLevel(&pstUser->m_tbPlayer);
-    if(dwVipLevel > 0)
-    {
-        const Json::Value& oJsonVipBuff = CGameInfo::GetInstance()->m_oJsonRoot["game_vip"]["b"]["b0"][dwVipLevel - 1];
-        Json::Value::Members oJsonVipBuffIds = oJsonVipBuff.getMemberNames();
-        for(Json::Value::Members::iterator it = oJsonVipBuffIds.begin(); it != oJsonVipBuffIds.end(); ++it)
-        {
-            TUINT32 udwBuffId = oJsonVipBuff[(*it)][0u].asUInt();
-            TINT32 dwBuffNum = oJsonVipBuff[(*it)][1u].asInt();
+    //TINT32 dwVipLevel = CPlayerBase::GetVipLevel(&pstUser->m_tbPlayer);
+    //if(dwVipLevel > 0)
+    //{
+    //    const Json::Value& oJsonVipBuff = CGameInfo::GetInstance()->m_oJsonRoot["game_vip"]["b"]["b0"][dwVipLevel - 1];
+    //    Json::Value::Members oJsonVipBuffIds = oJsonVipBuff.getMemberNames();
+    //    for(Json::Value::Members::iterator it = oJsonVipBuffIds.begin(); it != oJsonVipBuffIds.end(); ++it)
+    //    {
+    //        TUINT32 udwBuffId = oJsonVipBuff[(*it)][0u].asUInt();
+    //        TINT32 dwBuffNum = oJsonVipBuff[(*it)][1u].asInt();
 
-            pstUser->m_stPlayerBuffList[udwBuffId].m_udwBuffId = udwBuffId;
-            pstUser->m_stPlayerBuffList[udwBuffId].m_astBuffDetail[EN_BUFF_TYPE_VIP].m_udwId = udwBuffId;
-            pstUser->m_stPlayerBuffList[udwBuffId].m_astBuffDetail[EN_BUFF_TYPE_VIP].m_ddwNum += dwBuffNum;
-            pstUser->m_stPlayerBuffList[udwBuffId].m_astBuffDetail[EN_BUFF_TYPE_VIP].m_dwTime = 0;
-            pstUser->m_stPlayerBuffList[udwBuffId].m_ddwBuffTotal += dwBuffNum;
+    //        pstUser->m_stPlayerBuffList[udwBuffId].m_udwBuffId = udwBuffId;
+    //        pstUser->m_stPlayerBuffList[udwBuffId].m_astBuffDetail[EN_BUFF_TYPE_VIP].m_udwId = udwBuffId;
+    //        pstUser->m_stPlayerBuffList[udwBuffId].m_astBuffDetail[EN_BUFF_TYPE_VIP].m_ddwNum += dwBuffNum;
+    //        pstUser->m_stPlayerBuffList[udwBuffId].m_astBuffDetail[EN_BUFF_TYPE_VIP].m_dwTime = 0;
+    //        pstUser->m_stPlayerBuffList[udwBuffId].m_ddwBuffTotal += dwBuffNum;
+    //    }
+    //}
+    //return 0;
+
+    TINT32 dwVipLevel = CPlayerBase::GetVipLevel(&pstUser->m_tbPlayer);
+    if (dwVipLevel > 0)
+    {
+        const Json::Value& oJsonVipBuff = CGameInfo::GetInstance()->m_oJsonRoot["game_vip_new"][dwVipLevel - 1]["b"];
+        for (TUINT32 udwIdx = 0; udwIdx < oJsonVipBuff.size(); udwIdx++)
+        {
+            Json::Value::Members jMember = oJsonVipBuff[udwIdx].getMemberNames();
+            for (TUINT32 udwIdy = 0; udwIdy < jMember.size(); udwIdy++)
+            {
+                TUINT32 udwBuffId = oJsonVipBuff[udwIdx][jMember[udwIdy]][0u].asInt();
+                TINT32 dwBuffNum = oJsonVipBuff[udwIdx][jMember[udwIdy]][1u].asInt();
+                pstUser->m_stPlayerBuffList[udwBuffId].m_udwBuffId = udwBuffId;
+                pstUser->m_stPlayerBuffList[udwBuffId].m_astBuffDetail[EN_BUFF_TYPE_VIP].m_udwId = udwBuffId;
+                pstUser->m_stPlayerBuffList[udwBuffId].m_astBuffDetail[EN_BUFF_TYPE_VIP].m_ddwNum += dwBuffNum;
+                pstUser->m_stPlayerBuffList[udwBuffId].m_astBuffDetail[EN_BUFF_TYPE_VIP].m_dwTime = 0;
+                pstUser->m_stPlayerBuffList[udwBuffId].m_ddwBuffTotal += dwBuffNum;
+            }
         }
     }
     return 0;

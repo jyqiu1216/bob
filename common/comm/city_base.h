@@ -109,11 +109,11 @@ public:
 
     static TINT32 DelBuildingAtPos(TbCity* ptbCity, TUINT32 udwPos);
 
-    static TINT32 AddBuilding(TUINT32 udwPos, TUINT8 ucType, TUINT8 ucLevel, TbCity& tbCity);
+    static TINT32 AddBuilding(TUINT32 udwPos, TUINT32 ucType, TUINT8 ucLevel, TbCity& tbCity);
 
     static TUINT8 GetBuildingNumByLvAndType(SCityInfo *pstCity, TUINT32 udwFuncType, TUINT32 udwLv);
 
-    static TUINT32 GetBuildingLimitLv(TUINT8 ucType);
+    static TUINT32 GetBuildingLimitLv(TUINT32 ucType);
 
     static TUINT32 GetBuildingNumByCategory(TbCity *pstCity, TUINT32 udwCategory);
     static TBOOL HasBuildCategoryCapacity(SUserInfo *pstUser, TUINT32 udwBuildId);

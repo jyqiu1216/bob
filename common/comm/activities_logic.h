@@ -42,6 +42,8 @@ public:
     static TINT32 ComputeKillMonsterScore(SUserInfo *pstUser, TINT32 udwMonsterId, TINT32 udwMonsterLv,
                                             TINT64 ddwUid, TUINT32 udwSid, TUINT64 uddwAlid, string strUname);
 
+    static TINT32 ComputeResCollectScore(SUserInfo *pstUser, TUINT32 udwType, TUINT32 udwNum);
+
 public:
     static TBOOL IfCalcScore(SUserInfo *pstUser);
 

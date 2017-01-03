@@ -66,6 +66,8 @@ private:
     static TVOID GetLastTotalMight(SSession * pstSession);
 
     static TINT32 ComputePlayerPriorityForKf(SSession * pstSession);
+
+    static TINT32 FixIapExGemNum(SSession *pstSession);
 };
 
 #endif

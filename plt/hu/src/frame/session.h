@@ -612,6 +612,7 @@ struct SSession
     TbAl_store_consume  m_tbTmpAlConsume;
     TUINT8              m_ucTmpAlConsumeFlag;
 
+    TbUser_stat         m_tbTmpUserStat;
     TbPlayer            m_tbTmpPlayer;
     TUINT8              m_ucTmpPlayerFlag;
     Json::Value         m_jTmpPlayerRankInfo;
@@ -776,6 +777,10 @@ struct SSession
     string m_sEventInfo;
 
     string m_sRspJsonContent;
+
+    TBOOL m_bPickUpGift;
+    TUINT32 udwGiftUid;
+    TUINT32 udwGiftId;
 
     //wave@push_data
     CHuPushDataNode m_objAuPushDataNode;
@@ -1269,6 +1274,7 @@ struct SSession
         m_tbTmpAlConsume.Reset();
         m_ucTmpAlConsumeFlag = 0;
 
+        m_tbTmpUserStat.Reset();
         m_tbTmpPlayer.Reset();
         m_ucTmpPlayerFlag = 0;
         m_jTmpPlayerRankInfo.clear();
@@ -1407,6 +1413,9 @@ struct SSession
             m_atbIdol[udwIdx].Reset();
             m_ucIdolFlag[udwIdx] = EN_TABLE_UPDT_FLAG__UNCHANGE;
         }
+        m_bPickUpGift = FALSE;
+        udwGiftUid = 0;
+        udwGiftId = 0;
     }
 };
 

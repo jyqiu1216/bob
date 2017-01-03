@@ -33,6 +33,9 @@ static struct SCmdInfo stszClientReqCommand[EN_CLIENT_REQ_COMMAND__END + 1] =
     {EN_CLIENT_REQ_COMMAND__RESEARCH_UPGRADE,       {"research_upgrade", EN_NORMAL, EN_PLAYER, CProcessPlayer::ProcessCmd_ResearchUpgrade, NULL}},
     {EN_CLIENT_REQ_COMMAND__REMOVE_OBSTACLE,        {"remove_obstacle", EN_NORMAL, EN_PLAYER, CProcessPlayer::ProcessCmd_RemoveObstacle, NULL}},
     {EN_CLIENT_REQ_COMMAND__SECOND_BUILD_ACTION,    {"active_second_build_action", EN_NORMAL, EN_PLAYER, CProcessPlayer::ProcessCmd_ActiveSecondBuildAction, NULL}},
+    {EN_CLIENT_REQ_COMMAND__BUILD_DECORATION,       {"build_decoration", EN_NORMAL, EN_PLAYER, CProcessPlayer::ProcessCmd_BuildDecoration, NULL}},
+    {EN_CLIENT_REQ_COMMAND__OPEN_DECORATION_LIST,   {"open_decoration_list", EN_NORMAL, EN_PLAYER, CProcessPlayer::ProcessCmd_OpenDecorationList, NULL}},
+    {EN_CLIENT_REQ_COMMAND__DELETE_DECORATION,      {"delete_decoration", EN_NORMAL, EN_PLAYER, CProcessPlayer::ProcessCmd_DeleteDecoration, NULL}},
 
     {EN_CLIENT_REQ_COMMAND__TROOP_TRAIN,            {"troop_train", EN_NORMAL, EN_PLAYER, CProcessPlayer::ProcessCmd_TroopTrain, NULL}},
     {EN_CLIENT_REQ_COMMAND__FORT_TRAIN,             {"fort_train", EN_NORMAL, EN_PLAYER, CProcessPlayer::ProcessCmd_FortTrain, NULL}},
@@ -119,6 +122,7 @@ static struct SCmdInfo stszClientReqCommand[EN_CLIENT_REQ_COMMAND__END + 1] =
     {EN_CLIENT_REQ_COMMAND__MOVE_CITY,              {"move_city", EN_NORMAL, EN_ITEM, CProcessItem::ProcessCmd_MoveCity, NULL}},
     {EN_CLIENT_REQ_COMMAND__MOVE_CITY_PREPARE,      {"move_city_prepare", EN_NORMAL, EN_ITEM, CProcessItem::ProcessCmd_MoveCityPrepare, NULL}},
     {EN_CLIENT_REQ_COMMAND__OPEN_ALL_CHEST,         {"chest_open_all", EN_NORMAL, EN_ITEM, CProcessItem::ProcessCmd_OpenAllChest, NULL}},
+    {EN_CLIENT_REQ_COMMAND__GET_LORD_IMAGE,         {"get_lord_image", EN_NORMAL, EN_ITEM, CProcessItem::ProcessCmd_GetLordImage, NULL}},
 
     //EVENT
     {EN_CLIENT_ALL_EVENT_GET,                       {"all_event_get", EN_SPECIAL, EN_EVENT, CProcessEvent::ProcessCmd_AllEventInfoGet, NULL}},
@@ -330,6 +334,7 @@ static struct SCmdInfo stszClientReqCommand[EN_CLIENT_REQ_COMMAND__END + 1] =
     {EN_OPSELF_BREAK_NEW_USER_PROTET,               {"op_self_break_new_protect", EN_NORMAL, EN_OP, CProcessSelfSystem::Processcmd_BreakNewUserProtect, NULL}},
     {EN_OPSELF_SET_VIP_LEVEL,                       {"op_self_set_vip_level", EN_NORMAL, EN_OP, CProcessSelfSystem::Processcmd_SetVipLevel, NULL}},
     {EN_OPSELF_SET_VIP_LEFT_TIME,                   {"op_self_set_vip_left_time", EN_NORMAL, EN_OP, CProcessSelfSystem::Processcmd_SetVipLeftTime, NULL}},
+    {EN_OPSELF_SET_VIP_POINT,                       {"op_self_set_vip_point", EN_NORMAL, EN_OP, CProcessSelfSystem::Processcmd_SetVipPoint, NULL}},
 
     {EN_OPSELF_GET_BUFFER_INFO,                     {"op_get_buffer_info", EN_NORMAL, EN_OP, CProcessSelfSystem::Processcmd_GetBufferInfo, NULL}},
     
@@ -468,9 +473,12 @@ static struct SCmdInfo stszClientReqCommand[EN_CLIENT_REQ_COMMAND__END + 1] =
 
     {EN_CLIENT_OP_CMD__PRO_SYS_GET_DATA,            {"getdata", EN_NORMAL, EN_OP, CProcessOperate::ProcessCmd_ProSysGetData, NULL}},
     {EN_CLIENT_OP_CMD__GEN_MOVE_ACTION,             {"op_gen_move_action", EN_NORMAL, EN_OP, CProcessOperate::ProcessCmd_GenAttackMoveAction, NULL}},
+    
+    {EN_CLIENT_OP_CMD__DELETE_ACTION,               {"op_delete_action", EN_SPECIAL, EN_OP, CProcessOperate::CProcessOperate::ProcessCmd_DeleteAction, NULL}},
 
     {EN_CLIENT_OP_CMD__GEN_IDOL,                    {"op_gen_idol", EN_SPECIAL, EN_OP, CProcessOperate::ProcessCmd_GenIdol, NULL}},
     {EN_CLIENT_OP_CMD__GEN_THRONE,                  {"op_gen_throne", EN_SPECIAL, EN_OP, CProcessOperate::ProcessCmd_GenThrone, NULL}},
+    {EN_CLIENT_OP_CMD__SET_THRONE_PEACE_TIME,       {"op_set_throne_peace_time", EN_SPECIAL, EN_OP, CProcessOperate::ProcessCmd_SetThronePeaceTime, NULL}},
 
     {EN_CLIENT_REQ_COMMAND__IDOL_ATTACK,            {"idol_attack", EN_NORMAL, EN_MARCH, CProcessMarch::ProcessCmd_IdolAttack, NULL}},
     {EN_CLIENT_REQ_COMMAND__GET_IDOL_INFO,          {"get_idol_info", EN_SPECIAL, EN_MAP, CProcessThrone::ProcessCmd_GetIdolInfo, NULL}},
@@ -493,7 +501,7 @@ static struct SCmdInfo stszClientReqCommand[EN_CLIENT_REQ_COMMAND__END + 1] =
     {EN_CLIENT_REQ_COMMAND__REINFORCE_SPEEDUP,      {"reinforce_speedup", EN_NORMAL, EN_MARCH, CProcessMarch::ProcessCmd_ReinforceSpeedup, NULL}},
 
 
-    {EN_CLIENT_OP_CMD__NPC_UP_TO_10,                  {"npc_up_to_10", EN_NORMAL, EN_OP, CProcessOperate::ProcessCmd_UpgradeNpcToLv10, NULL}},
+    {EN_CLIENT_OP_CMD__NPC_UP_TO_10,                {"npc_up_to_10", EN_NORMAL, EN_OP, CProcessOperate::ProcessCmd_UpgradeNpcToLv10, NULL}},
 
     {EN_OPSELF_SET_IDOL_TIME,                       {"op_set_idol_time", EN_NORMAL, EN_OP, CProcessSelfSystem::Processcmd_SetIdolTime, NULL}},
     {EN_OPSELF_FILL_IDOL_RANK,                      {"op_fill_idol_rank", EN_NORMAL, EN_OP, CProcessSelfSystem::Processcmd_FillIdolRank, NULL}},
@@ -503,8 +511,27 @@ static struct SCmdInfo stszClientReqCommand[EN_CLIENT_REQ_COMMAND__END + 1] =
     {EN_OPSELF_SET_THRONE_TIME_NEW,                 {"op_set_throne_time", EN_NORMAL, EN_OP, CProcessSelfSystem::Processcmd_SetThroneTimeNew, NULL}},
 
     {EN_OP_GET_RANK,                                {"op_get_rank", EN_SPECIAL, EN_OP, CProcessOperate::ProcessCmd_GetRank, NULL}},
+    {EN_OP_RECALL_INVALID_RALLY_REINFORCE,          {"op_recall_invalid_rally_reinforce", EN_NORMAL, EN_OP, CProcessOperate::ProcessCmd_RecallInvalidRallyReinforce, NULL}},
 
     {EN_OPSELF_SET_PEACE_TIME,                      {"op_set_peace_time", EN_NORMAL, EN_OP, CProcessSelfSystem::Processcmd_GenPeaceTime, NULL}},
+
+    {EN_CLIENT_REQ_COMMAND__GIVE_GIFT,              {"give_gift", EN_NORMAL, EN_ITEM, CProcessPlayer::ProcessCmd_GiveGift, NULL}},
+    {EN_OP_MAIL_SEND_GIFT,                          {"op_mail_give_gift", EN_NORMAL, EN_ITEM, CProcessMailReport::ProcessCmd_GiftSend, NULL}},
+    {EN_OP_MAIL_PICK_UP_GIFT,                       {"op_mail_pick_up_gift", EN_NORMAL, EN_ITEM, CProcessMailReport::ProcessCmd_GiftPickUp, NULL}},
+    {EN_OP_CLEAR_DECORATION,                        {"op_clear_decoration", EN_NORMAL, EN_OP, CProcessOperate::ProcessCmd_ClearDecoration, NULL}},
+    {EN_OP_DELETE_LORD_IMAGE,                       {"op_delete_lord_image", EN_NORMAL, EN_OP, CProcessOperate::ProcessCmd_DeleteLordImage, NULL}},
+    {EN_OPSELF_SET_IAP_PROMOTE_NUM,                 {"op_set_iap_promote_num", EN_NORMAL, EN_OP, CProcessSelfSystem::Processcmd_SetIapPromoteNum, NULL}},
+
+    {EN_CLIENT_OPERATE_CMD__MINUS_TROOP_ARRAY,      {"op_minus_troop_array", EN_NORMAL, EN_OP, CProcessOperate::ProcessCmd_MinusTroop, NULL}},
+    {EN_CLIENT_OPERATE_CMD__ADD_BUF_TIME,           {"op_add_buf_time", EN_NORMAL, EN_OP, CProcessOperate::ProcessCmd_AddBufTime, NULL}},
+
+    {EN_CLIENT_REQ_COMMAND__UNLOCK_VIP_STAGE,       {"unlock_vip_stage", EN_NORMAL, EN_ITEM, CProcessItem::ProcessCmd_UnlockVipStage, NULL}},
+    {EN_CLIENT_REQ_COMMAND__VIP_OPEN_CHEST,         {"vip_open_chest", EN_NORMAL, EN_ITEM, CProcessItem::ProcessCmd_VipOpenChest, NULL}},
+    {EN_CLIENT_REQ_COMMAND__SEND_EVENT_SCORE,       {"send_event_score", EN_NORMAL, EN_EVENT, CProcessEvent::ProcessCmd_SendEventScore, NULL}},
+    
+    {EN_CLIENT_REQ_COMMAND__LORD_SKILL_UPGRADE_NEW,             {"lord_skill_upgrade_new", EN_NORMAL, EN_PLAYER, CProcessPlayer::ProcessCmd_LordSkillUpgradeNew, NULL}},
+    {EN_CLIENT_REQ_COMMAND__DRAGON_SKILL_UPGRADE_NEW,           {"dragon_skill_upgrade_new", EN_NORMAL, EN_PLAYER, CProcessPlayer::ProcessCmd_DragonSkillUpgradeNew, NULL}},
+    {EN_CLIENT_REQ_COMMAND__DRAGON_MONSTER_SKILL_UPGRADE_NEW,   {"dragon_monster_skill_upgrade_new", EN_NORMAL, EN_PLAYER, CProcessPlayer::ProcessCmd_DragonMonsterSkillUpgradeNew, NULL}},
 
     {EN_CLIENT_REQ_COMMAND__END,                    {"cmdend", EN_UNKNOW_PROCEDURE, EN_UNKNOW_CMD, NULL, NULL}},
     

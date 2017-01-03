@@ -25,13 +25,7 @@ public:
     // function  ==> 新版更新推送开关
     static TINT32 ProcessCmd_ApnsSwitch(SSession *pstSession, TBOOL &bNeedResponse);
 
-
-
     static TINT32 AddPromoteReward(SSession *pstSession, const Json::Value &jReward);
-
-    static TUINT32 GetPurchaseAbility(TUINT32 udwGemNum);
-    static TUINT32 GetIapPay(string sItemId);
-    static TUINT32 GetIapPayCent(string sItemId);
 };
 
 #endif

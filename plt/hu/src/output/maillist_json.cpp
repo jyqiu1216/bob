@@ -84,7 +84,7 @@ TVOID CMailListJson::GenDataJson(SSession* pstSession, Json::Value& rJson)
                 continue;
             }
             rJsonMailList["entries"][udwCount] = Json::Value(Json::objectValue);
-            CMailListJson::GenMailInfo(&pstUser->m_stMailUserInfo.m_aMailToReturn[udwIdx], ptbMail, rJsonMailList["entries"][udwCount]["head_mail"]);
+            CMailListJson::GenMailInfo(&pstUser->m_stMailUserInfo.m_aMailToReturn[udwIdx], ptbMail, 1, rJsonMailList["entries"][udwCount]["head_mail"]);
             rJsonMailList["entries"][udwCount]["unread_num"] = pstUser->m_stMailUserInfo.m_aMailToReturn[udwIdx].dwUnreadCount;
             rJsonMailList["entries"][udwCount]["total_num"] = pstUser->m_stMailUserInfo.m_aMailToReturn[udwIdx].dwNum;
             udwCount++;
@@ -191,7 +191,7 @@ TVOID CMailListJson::GenDataJson(SSession* pstSession, Json::Value& rJson)
                 }
             }
             rJsonMailList["entries"][udwCount] = Json::Value(Json::objectValue);
-            CMailListJson::GenMailInfo(&pstUser->m_stMailUserInfo.m_aMailToReturn[udwIdx], ptbMail, rJsonMailList["entries"][udwCount]);
+            CMailListJson::GenMailInfo(&pstUser->m_stMailUserInfo.m_aMailToReturn[udwIdx], ptbMail, 0, rJsonMailList["entries"][udwCount]);
             udwCount++;
         }
         rJsonMailList["title"] = strTabName;
@@ -209,7 +209,7 @@ TVOID CMailListJson::GenDataJson(SSession* pstSession, Json::Value& rJson)
         Json::Value& rJsonMailList = rJson["svr_op_mail_list"];
         rJsonMailList = Json::Value(Json::objectValue);
         SMailEntry stMailEntry;
-        CMailListJson::GenMailInfo(&stMailEntry, &pstUser->m_atbMailList[0U], rJsonMailList);
+        CMailListJson::GenMailInfo(&stMailEntry, &pstUser->m_atbMailList[0U], 0, rJsonMailList);
     }
 }
 
@@ -223,7 +223,7 @@ CMailListJson::~CMailListJson()
 
 }
 
-TVOID CMailListJson::GenMailInfo(SMailEntry* pstMailEntry, TbMail* ptbMail, Json::Value& rjson)
+TVOID CMailListJson::GenMailInfo(SMailEntry* pstMailEntry, TbMail* ptbMail, TUINT32 udwHeadFlag, Json::Value& rjson)
 {
     //op_mail_get
     //"svr_op_mail_list":
@@ -391,6 +391,10 @@ TVOID CMailListJson::GenMailInfo(SMailEntry* pstMailEntry, TbMail* ptbMail, Json
             rjson["reward"][0u].append(1);
             rjson["reward"][0u].append(1);
         }
+    }
+    else if (udwHeadFlag)
+    {
+        rjson["reward"] = Json::Value(Json::arrayValue);
     }
 
     rjson["read"] = (pstMailEntry->dwStatus & EN_MAIL_STATUS_READ) > 0 ? 1 : 0;

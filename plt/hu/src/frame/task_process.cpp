@@ -1253,7 +1253,7 @@ TVOID CTaskProcess::NormalMainProdure(SSession *pstSession, const TINT32 dwCmdTy
         }
         else
         {
-            TSE_LOG_INFO(m_poServLog, ("Main_flow:normal: have no event request to send [ret=%d] [seq=%u]",
+            TSE_LOG_INFO(m_poServLog, ("Main_flow:normal: have no rank request to send [ret=%d] [seq=%u]",
                 dwRetCode, pstSession->m_udwSeqNo));
             pstSession->m_udwNextProcedure = EN_PROCEDURE__END;
         }

@@ -669,6 +669,36 @@ TINT32 CCommonLogic::AbandonThrone(TbAlliance* ptbAlliance, TbThrone *ptbThrone,
         ptbAlliance->Set_Last_occupy_time(0);
     }
 
+    if (ptbThrone->m_nStatus == EN_THRONE_STATUS__CONTEST_PERIOD && ptbThrone->m_jRank_info.isArray())
+    {
+        for (TUINT32 udwIdx = 0; udwIdx < ptbThrone->m_jRank_info.size(); udwIdx++)
+        {
+            if (ptbThrone->m_jRank_info[udwIdx][0U].asInt() == ptbThrone->m_nAlid)
+            {
+                if (ptbThrone->m_jRank_info[udwIdx][1U].asString() != ptbAlliance->m_sAl_nick_name)
+                {
+                    ptbThrone->m_jRank_info[udwIdx][1U] = ptbAlliance->m_sAl_nick_name;
+                }
+                if (ptbThrone->m_jRank_info[udwIdx][2U].asString() != ptbAlliance->m_sName)
+                {
+                    ptbThrone->m_jRank_info[udwIdx][2U] = ptbAlliance->m_sName;
+                }
+                ptbThrone->m_jRank_info[udwIdx][3U] = ptbThrone->m_jRank_info[udwIdx][3U].asUInt() + udwCurTime - ptbThrone->m_jRank_info[udwIdx][4U].asUInt();
+                if (ptbThrone->m_jRank_info[udwIdx][3U].asUInt() >= CCommonBase::GetGameBasicVal(EN_GAME_BASIC_THRONE_FIGHT_TIME))
+                {
+                    ptbThrone->m_jRank_info[udwIdx][3U] = CCommonBase::GetGameBasicVal(EN_GAME_BASIC_THRONE_FIGHT_TIME) - 1; //×ö±£»¤...
+                }
+                ptbThrone->m_jRank_info[udwIdx][4U] = 0;
+                ptbThrone->SetFlag(TbTHRONE_FIELD_RANK_INFO);
+                break;
+            }
+        }
+    }
+    else if (ptbThrone->m_nStatus == EN_THRONE_STATUS__PEACE_TIME)
+    {
+        ptbThrone->Set_Rank_info(Json::Value(Json::arrayValue));
+    }
+
     ptbThrone->Set_Alid(-1);
     ptbThrone->Set_Owner_id(0);
     ptbThrone->Set_Owner_cid(0);
@@ -736,30 +766,78 @@ TVOID CCommonLogic::GenPrisonReport(TbMarch_action* ptbPrison, TbPlayer* ptbSave
     ptbReport->Set_Content(jsonWriter.write(jsonContent));
 }
 
-TFLOAT32 CCommonLogic::GetIapNumByRechargeGem(const TUINT32 udwGemNum)
+TUINT32 CCommonLogic::GetPurchaseAbility(TUINT32 udwGemNum)
 {
-    TFLOAT32 fIapNum = 0.0;
-    switch(udwGemNum)
+    TUINT32 udwAbility = EN_PURCHASE_ABILITY__LV0;
+    if (udwGemNum >= 500)
     {
-    case 500:
-        fIapNum = 4.99;
-        break;
-    case 1100:
-        fIapNum = 9.99;
-        break;
-    case 2500:
-        fIapNum = 19.99;
-        break;
-    case 7500:
-        fIapNum = 49.99;
-        break;
-    case 18000:
-        fIapNum = 99.99;
-        break;
-    default:
-        break;
+        udwAbility = EN_PURCHASE_ABILITY__LV1;
     }
-    return fIapNum;
+    if (udwGemNum >= 7500)
+    {
+        udwAbility = EN_PURCHASE_ABILITY__LV2;
+    }
+    if (udwGemNum >= 18000)
+    {
+        udwAbility = EN_PURCHASE_ABILITY__LV3;
+    }
+    return udwAbility;
+}
+
+TUINT32 CCommonLogic::GetIapPay(const string& strItemId)
+{
+    TUINT32 udwPay = 0;
+
+    if (strcmp(strItemId.c_str(), "50gems9") == 0)
+    {
+        udwPay = 5;
+    }
+    else if (strcmp(strItemId.c_str(), "100gems9") == 0)
+    {
+        udwPay = 10;
+    }
+    else if (strcmp(strItemId.c_str(), "240gems9") == 0)
+    {
+        udwPay = 20;
+    }
+    else if (strcmp(strItemId.c_str(), "665gems9") == 0)
+    {
+        udwPay = 50;
+    }
+    else if (strcmp(strItemId.c_str(), "1600gems9") == 0)
+    {
+        udwPay = 100;
+    }
+
+    return udwPay;
+}
+
+TUINT32 CCommonLogic::GetIapPayCent(const string& strItemId)
+{
+    TUINT32 udwPay = 0;
+
+    if (strcmp(strItemId.c_str(), "50gems9") == 0)
+    {
+        udwPay = 499;
+    }
+    else if (strcmp(strItemId.c_str(), "100gems9") == 0)
+    {
+        udwPay = 999;
+    }
+    else if (strcmp(strItemId.c_str(), "240gems9") == 0)
+    {
+        udwPay = 1999;
+    }
+    else if (strcmp(strItemId.c_str(), "665gems9") == 0)
+    {
+        udwPay = 4999;
+    }
+    else if (strcmp(strItemId.c_str(), "1600gems9") == 0)
+    {
+        udwPay = 9999;
+    }
+
+    return udwPay;
 }
 
 TVOID CCommonLogic::AddBookMark(SUserInfo *pstUser, TUINT64 udwBookmarkPos, TUINT8 ucBookmarkType, string pszBookmarkNick)

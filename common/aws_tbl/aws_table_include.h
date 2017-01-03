@@ -51,4 +51,8 @@
 #include "aws_table_trade.h"
 #include "aws_table_unique_name.h"
 #include "aws_table_user_stat.h"
+#include "aws_table_decoration.h"
+#include "aws_table_lord_image.h"
+#include "aws_table_clear_al_gift.h"
+
 #endif

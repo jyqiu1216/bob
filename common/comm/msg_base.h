@@ -6,6 +6,7 @@
 #include <string>
 #include "aws_table_include.h"
 #include "jsoncpp/json/json.h"
+#include "bussiness_struct.h"
 
 using std::ostringstream;
 using std::string;
@@ -250,6 +251,8 @@ public:
     // 邮件相关
     // 发送任意运营邮件给个人的接口,无特殊逻辑判断
     static TVOID SendOperateMail(TINT64 ddwTargetUid, TINT32 dwDocId, TUINT32 udwSid, const TCHAR *szContent);
+    static TVOID SendOperateMail(TINT64 ddwTargetUid, TINT32 dwDocId, TUINT32 udwSid, TINT32 dwSender, TINT32 dwJmpType,
+        const TCHAR *szTitle, const TCHAR *szContent, const TCHAR* szExtraContent, const TCHAR* szReward);
     static TVOID SendOperateMail(TINT64 ddwTargetUid, TINT32 dwDocId, TUINT32 udwSid, TINT32 dwDisplayClass,
         const TCHAR *szContent, const TCHAR* szExtraContent, const TCHAR* szReward);
 
@@ -309,6 +312,10 @@ public:
 public:
     static TVOID RefreshUserInfo(TINT64 ddwUid);
     static TVOID ClearNoPlayerMap(TINT64 ddwUid, TINT64 ddwSid, TINT64 ddwPos);
+
+public:
+    static TVOID GiveGift(TINT64 ddwUid, TUINT32 *udwTargetUidList, TUINT32 udwTargetNum, TINT64 ddwGiftId, const string& szContent, SSpGlobalRes *pstReward);
+    static TVOID PickUpGift(TINT64 ddwUid, TINT64 ddwSender, TINT64 ddwGiftId, TINT64 ddwMailId);
 
 };
 

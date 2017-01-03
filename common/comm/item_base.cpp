@@ -58,11 +58,16 @@ TINT32 CItemBase::SetItem(TbBackpack *ptbBackPack, TUINT32 udwItemId, TUINT32 ud
         if (ptbBackPack->m_bItem[udwIdx].m_ddwItemId == udwItemId)
         {
             ptbBackPack->m_bItem[udwIdx].m_ddwItemNum = udwItemNum;
+            if (udwItemNum == 0)
+            {
+                ptbBackPack->m_bItem[udwIdx] = ptbBackPack->m_bItem[ptbBackPack->m_bItem.m_udwNum - 1];
+                ptbBackPack->m_bItem.m_udwNum--;
+            }
             ptbBackPack->SetFlag(TbBACKPACK_FIELD_ITEM);
             return 0;
         }
     }
-    if (ptbBackPack->m_bItem.m_udwNum < MAX_ITEM_TYPE_NUM)
+    if (ptbBackPack->m_bItem.m_udwNum < MAX_ITEM_TYPE_NUM && udwItemNum > 0)
     {
         ptbBackPack->m_bItem[ptbBackPack->m_bItem.m_udwNum].m_ddwItemId = udwItemId;
         ptbBackPack->m_bItem[ptbBackPack->m_bItem.m_udwNum].m_ddwItemNum = udwItemNum;

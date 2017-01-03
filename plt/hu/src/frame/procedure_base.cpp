@@ -1169,11 +1169,11 @@ TINT32 CBaseProcedure::SendRankSvrRequest(SSession *pstSession)
         if (S_OK == pobjDownMgr->zk_GetNode(DOWN_NODE_TYPE__RANK_SVR, &pstSession->m_pstRankSvrNode))
         {
             pstSession->m_bRankSvrExist = TRUE;
-            TSE_LOG_DEBUG(pstSession->m_poServLog, ("SendRankSvrRequest: Get report node succ [seq=%u]", pstSession->m_udwSeqNo));
+            TSE_LOG_DEBUG(pstSession->m_poServLog, ("SendRankSvrRequest: Get rank node succ [seq=%u]", pstSession->m_udwSeqNo));
         }
         else
         {
-            TSE_LOG_ERROR(pstSession->m_poServLog, ("SendRankSvrRequest: Get report node fail [seq=%u]", pstSession->m_udwSeqNo));
+            TSE_LOG_ERROR(pstSession->m_poServLog, ("SendRankSvrRequest: Get rank node fail [seq=%u]", pstSession->m_udwSeqNo));
             return -21;
         }
         if (NULL == pstSession->m_pstRankSvrNode->m_stDownHandle.handle)
@@ -1497,6 +1497,10 @@ TINT32 CBaseProcedure::ProcessProcedure_UserDataGetRequest(SSession *pstSession)
     CAwsRequest::ThroneGet(pstSession, udwSvrId);
 
     CAwsRequest::TitleQuery(pstSession, udwSvrId);
+    //decoration
+    CAwsRequest::DecorationGet(pstSession, udwUserId);
+    //lord image
+    CAwsRequest::LordImageGet(pstSession, udwUserId);
 
     TINT32 dwRetCode = SendAwsRequest(pstSession, EN_SERVICE_TYPE_QUERY_DYNAMODB_REQ);
     if(dwRetCode != 0)
@@ -1566,15 +1570,15 @@ TINT32 CBaseProcedure::ProcessProcedure_AllianceDataGetRequest(SSession *pstSess
         TbAl_gift_reward tbAlGiftReward;
         tbAlGiftReward.Set_Uid(pstSession->m_stUserInfo.m_tbPlayer.m_nUid);
         tbAlGiftReward.Set_Gid(ddwTimePoint);
-        CAwsRequest::Query(pstSession, &tbAlGiftReward, ETbALGIFTREWARD_OPEN_TYPE_PRIMARY, comp_desc, true, true, false, MAX_AL_IAP_GIFT_NUM * 2);
+        CAwsRequest::Query(pstSession, &tbAlGiftReward, ETbALGIFTREWARD_OPEN_TYPE_PRIMARY, comp_desc, true, true, false, MAX_AL_IAP_GIFT_NUM);
 
-        //个人专属的联盟礼物
-        tbAl_gift.Set_Aid(-1 * static_cast<TINT64>(udwUserId));
-        CAwsRequest::Query(pstSession, &tbAl_gift, ETbALGIFT_OPEN_TYPE_PRIMARY, comp_desc, TRUE, TRUE, FALSE, MAX_AL_IAP_GIFT_NUM);
+        TbClear_al_gift tbClearAlGift;
+        tbClearAlGift.Set_Uid(pstSession->m_stUserInfo.m_tbPlayer.m_nUid);
+        CAwsRequest::GetItem(pstSession, &tbClearAlGift, ETbCLEARALGIFT_OPEN_TYPE_PRIMARY);
 
         CAwsRequest::TipsQuery(pstSession, -1 * static_cast<TINT64>(udwAllianceId), MAX_PLAYER_TIPS_NUM - 1);
 
-        CAwsRequest::AlEventTipsQuery(pstSession, static_cast<TINT64>(udwAllianceId), MAX_EVENT_TIPS_NUM - 1);
+        //CAwsRequest::AlEventTipsQuery(pstSession, static_cast<TINT64>(udwAllianceId), MAX_EVENT_TIPS_NUM - 1);
 
         if (pstSession->m_stUserInfo.m_tbPlayer.m_nAlpos == EN_ALLIANCE_POS__CHANCELLOR)
         {
@@ -1640,6 +1644,8 @@ TINT32 CBaseProcedure::ProcessProcedure_UserDataGetResponse(SSession *pstSession
     TbPlayer& tbPlayer = pstUserInfo->m_tbPlayer;
     TbUser_stat& tbUser_stat = pstUserInfo->m_tbUserStat;
     TbCity& tbCity = pstUserInfo->m_stCityInfo.m_stTblData;
+    TbLord_image& tbLord_image = pstUserInfo->m_tbLordImage;
+    TbDecoration& tbDecoration = pstUserInfo->m_tbDecoration;
     TbBackpack* ptbBackpack = &pstUserInfo->m_tbBackpack;
     ptbBackpack->Reset();
     TbBlack_account tbBlack_accout;
@@ -1717,6 +1723,16 @@ TINT32 CBaseProcedure::ProcessProcedure_UserDataGetResponse(SSession *pstSession
         if(strTableRawName == EN_AWS_TABLE_USER_STAT)
         {
             CAwsResponse::OnGetItemRsp(*pstAwsRspInfo, &tbUser_stat);
+            continue;
+        }
+        if (strTableRawName == EN_AWS_TABLE_LORD_IMAGE)
+        {
+            CAwsResponse::OnGetItemRsp(*pstAwsRspInfo, &tbLord_image);
+            continue;
+        }
+        if (strTableRawName == EN_AWS_TABLE_DECORATION)
+        {
+            CAwsResponse::OnGetItemRsp(*pstAwsRspInfo, &tbDecoration);
             continue;
         }
         if(strTableRawName == EN_AWS_TABLE_BLACK_ACCOUNT)
@@ -1873,6 +1889,9 @@ TINT32 CBaseProcedure::ProcessProcedure_UserDataGetResponse(SSession *pstSession
         }
     }
 
+    //wave@20161130: for bug check
+    CQuestLogic::CheckPlayerTimeQuestValid(&pstSession->m_stUserInfo, "user_data_response");
+
     TSE_LOG_DEBUG(pstSession->m_poServLog, ("LoginGetResponse: get global key. [val=%ld] [seq=%u]", tbParam.m_nVal, pstSession->m_udwSeqNo))
 
     // 这些操作必须在获取完用户数据之后就执行,不然会导致联盟数据的拉取问题
@@ -1942,7 +1961,7 @@ TINT32 CBaseProcedure::ProcessProcedure_UserDataGetResponse(SSession *pstSession
     // 5. 记录命令处理前的gem
     pstSession->m_ddwGemBegin = pstSession->m_stUserInfo.m_tbLogin.m_nGem;
 
-    if((0UL == ptbBackpack->m_nUid) && (0UL != tbPlayer.m_nUid))
+    if((0 == ptbBackpack->m_nUid) && (0 != tbPlayer.m_nUid))
     {
         TUINT32 udwEquipGridNum = CGameInfo::GetInstance()->m_oJsonRoot["game_init_data"]["r"]["a5"].asUInt();
 
@@ -1953,18 +1972,26 @@ TINT32 CBaseProcedure::ProcessProcedure_UserDataGetResponse(SSession *pstSession
         tbUser_stat.Set_Equip_gride(udwEquipGridNum);
     }
 
-    if((0UL == pstUserInfo->m_tbUserStat.m_nUid) && (0UL != tbPlayer.m_nUid))
+    if((0 == pstUserInfo->m_tbUserStat.m_nUid) && (0 != tbPlayer.m_nUid))
     {
         pstUserInfo->m_tbUserStat.Set_Uid(tbPlayer.m_nUid);
         
     }
 
-    if((0UL == pstUserInfo->m_tbBounty.m_nUid) && (0UL != tbPlayer.m_nUid))
+    if((0 == pstUserInfo->m_tbBounty.m_nUid) && (0 != tbPlayer.m_nUid))
     {
         pstUserInfo->m_tbBounty.Set_Uid(tbPlayer.m_nUid);
         CBountyLogic::GenBountyInfo(pstUserInfo, &pstUserInfo->m_stCityInfo);
     }
 
+    if ((0 == pstUserInfo->m_tbLordImage.m_nUid) && (0 != tbPlayer.m_nUid))
+    {
+        pstUserInfo->m_tbLordImage.Set_Uid(tbPlayer.m_nUid);
+    }
+    if ((0 == pstUserInfo->m_tbDecoration.m_nUid) && (0 != tbPlayer.m_nUid))
+    {
+        pstUserInfo->m_tbDecoration.Set_Uid(tbPlayer.m_nUid);
+    }
     //1.被删除的死用户数据恢复(leyton add@20140125)
     if(tbPlayer.m_nDead_flag > 0)
     {
@@ -2232,10 +2259,10 @@ TINT32 CBaseProcedure::ProcessProcedure_AllianceDataGetResponse(SSession *pstSes
         }
         if(strTableRawName == EN_AWS_TABLE_AL_GIFT)
         {
-            dwRet = CAwsResponse::OnQueryRsp(*pstAwsRspInfo, pstUserInfo->m_stAlGifts.m_atbGifts + pstUserInfo->m_stAlGifts.m_dwGiftNum, sizeof(TbAl_gift), MAX_AL_IAP_GIFT_NUM);
+            dwRet = CAwsResponse::OnQueryRsp(*pstAwsRspInfo, pstUserInfo->m_stAlGifts.m_atbGifts, sizeof(TbAl_gift), MAX_AL_IAP_GIFT_NUM);
             if(dwRet > 0)
             {
-                pstUserInfo->m_stAlGifts.m_dwGiftNum += dwRet;
+                pstUserInfo->m_stAlGifts.m_dwGiftNum = dwRet;
             }
             continue;
         }
@@ -2310,10 +2337,11 @@ TINT32 CBaseProcedure::ProcessProcedure_AllianceDataGetResponse(SSession *pstSes
         }
         if(strTableRawName == EN_AWS_TABLE_AL_GIFT_REWARD)
         {
-            dwRet = CAwsResponse::OnQueryRsp(*pstAwsRspInfo, pstUserInfo->m_atbAlGiftReward + pstUserInfo->m_udwAlGiftRewardNum, sizeof(TbAl_gift_reward), MAX_AL_IAP_GIFT_NUM * 2);
+            dwRet = CAwsResponse::OnQueryRsp(*pstAwsRspInfo, pstUserInfo->m_atbAlGiftReward, 
+                sizeof(TbAl_gift_reward), MAX_AL_IAP_GIFT_NUM_SVR);
             if(dwRet > 0)
             {
-                pstUserInfo->m_udwAlGiftRewardNum += dwRet;
+                pstUserInfo->m_udwAlGiftRewardNum = dwRet;
             }
             continue;
         }
@@ -2338,6 +2366,11 @@ TINT32 CBaseProcedure::ProcessProcedure_AllianceDataGetResponse(SSession *pstSes
             {
                 pstUserInfo->m_dwRewardWindowNum = dwRet;
             }
+            continue;
+        }
+        if (strTableRawName == EN_AWS_TABLE_CLEAR_AL_GIFT)
+        {
+            CAwsResponse::OnGetItemRsp(*pstAwsRspInfo, &pstUserInfo->m_tbClearAlGift);
             continue;
         }
     }
@@ -2814,17 +2847,36 @@ TINT32 CBaseProcedure::ProcessProcedure_UserAndAllianceDataUpdtRequest(SSession 
         TSE_LOG_DEBUG(pstSession->m_poServLog, ("TableUpdate: user_stat need to update [uid=%ld] [seq=%u]",
             pstUserInfo->m_tbUserStat.m_nUid, pstSession->m_udwSeqNo));
     }
+    /********************************************************************************************/
+    // lord_image表数据
+    dwRetCode = CAwsRequest::UpdateItem(pstSession, &pstUserInfo->m_tbLordImage);
+    if (0 == dwRetCode)
+    {
+        TSE_LOG_DEBUG(pstSession->m_poServLog, ("TableUpdate: lord_image need to update [uid=%ld] [seq=%u]",
+            pstUserInfo->m_tbLordImage.m_nUid, pstSession->m_udwSeqNo));
+    }
+    /********************************************************************************************/
+    // decoration表数据
+    dwRetCode = CAwsRequest::UpdateItem(pstSession, &pstUserInfo->m_tbDecoration);
+    if (0 == dwRetCode)
+    {
+        TSE_LOG_DEBUG(pstSession->m_poServLog, ("TableUpdate: decoration need to update [uid=%ld] [seq=%u]",
+            pstUserInfo->m_tbDecoration.m_nUid, pstSession->m_udwSeqNo));
+    }
 
     /********************************************************************************************/
     // 更新操作过的iap gift列表(al_gift_reward)
     for(TUINT32 dwIdx = 0; dwIdx < pstUserInfo->m_udwAlGiftRewardNum; dwIdx++)
     {
-        dwRetCode = CAwsRequest::UpdateItem(pstSession, &pstUserInfo->m_atbAlGiftReward[dwIdx]);
-        if(0 == dwRetCode)
+        if (pstUserInfo->m_aucAlGiftRewardFlag[dwIdx] != EN_TABLE_UPDT_FLAG__UNCHANGE)
         {
-            TSE_LOG_DEBUG(pstSession->m_poServLog, ("TableUpdate: al_gift_reward need to update [uid=%ld] [seq=%u]", 
-                pstUserInfo->m_atbAlGiftReward[dwIdx].m_nUid, 
-                pstSession->m_udwSeqNo));
+            dwRetCode = CAwsRequest::UpdateItem(pstSession, &pstUserInfo->m_atbAlGiftReward[dwIdx]);
+            if (0 == dwRetCode)
+            {
+                TSE_LOG_DEBUG(pstSession->m_poServLog, ("TableUpdate: al_gift_reward need to update [uid=%ld] [seq=%u]",
+                    pstUserInfo->m_atbAlGiftReward[dwIdx].m_nUid,
+                    pstSession->m_udwSeqNo));
+            }
         }
     }
 
@@ -3131,6 +3183,11 @@ TINT32 CBaseProcedure::ProcessProcedure_UserAndAllianceDataUpdtRequest(SSession 
                 }
             }
         }
+    }
+
+    if (pstUserInfo->m_tbClearAlGift.m_nUid > 0)
+    {
+        CAwsRequest::UpdateItem(pstSession, &pstUserInfo->m_tbClearAlGift);
     }
 
     //联盟成员购买物品,生成消费记录
@@ -3890,6 +3947,9 @@ TINT32 CBaseProcedure::ProcessProcedure_DataCenterResponse(SSession* pstSession)
             break;
         }
     }
+
+    //wave@20161130: for bug check
+    CQuestLogic::CheckPlayerTimeQuestValid(pstUserInfo, "datacenter_response_end");
 
     return dwRetCode;
     

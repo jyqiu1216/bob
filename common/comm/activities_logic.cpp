@@ -452,6 +452,12 @@ TUINT32 CActivitesLogic::ComputeStructScoreList(SUserInfo *pstUser, TUINT32 udwS
     return 0;
 }
 
+TINT32 CActivitesLogic::ComputeResCollectScore(SUserInfo *pstUser, TUINT32 udwType, TUINT32 udwNum)
+{
+    pstUser->m_stScore.audwScoreList[EN_SCORE_TYPE__RES_COLLECT][udwType] += udwNum / 1000;
+    return 0;
+}
+
 TBOOL CActivitesLogic::IfCalcScore(SUserInfo *pstUser)
 {
     if (CCityBase::GetBuildingLevelByFuncType(&pstUser->m_stCityInfo, EN_BUILDING_TYPE__TRIAL) == 0)

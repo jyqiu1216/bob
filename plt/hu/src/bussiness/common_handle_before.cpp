@@ -25,6 +25,9 @@ TINT32 CCommonHandleBefore::Process_CommonHandleBefore(SSession *pstSession)
     TINT32 dwRetCode = 0;
     SUserInfo *pstUser = &pstSession->m_stUserInfo;
 
+    //wave@20161130: for bug check
+    CQuestLogic::CheckPlayerTimeQuestValid(pstUser, "handle_before_beg");
+
     // 游戏评估系统需要保存的raw ex_data
     // source
     SReqInfo stReqInfo;
@@ -65,6 +68,7 @@ TINT32 CCommonHandleBefore::Process_CommonHandleBefore(SSession *pstSession)
     
     // 记录玩家初始vip点数
     pstSession->m_stUserInfo.m_ddwRawVipPoint = pstSession->m_stUserInfo.m_tbPlayer.m_nVip_point;
+    pstSession->m_stUserInfo.m_dwRawVipLevel = CPlayerBase::GetRawVipLevel(&pstUser->m_tbPlayer, pstUser->m_tbPlayer.m_nVip_point);
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     // 军队的数量监控
@@ -245,6 +249,11 @@ TINT32 CCommonHandleBefore::Process_CommonHandleBefore(SSession *pstSession)
         }
     }
 
+    CCommonHandleBefore::FixIapExGemNum(pstSession);
+
+    //wave@20161130: for bug check
+    CQuestLogic::CheckPlayerTimeQuestValid(pstUser, "handle_before_end");
+
     return 0;
 }
 
@@ -271,41 +280,7 @@ TINT32 CCommonHandleBefore::UpdateCityInfo(SSession *pstSession)
 // function  ===> 更新用户的al_gift
 TINT32 CCommonHandleBefore::ComputeAllianceGift(SSession *pstSession)
 {
-    SUserInfo* pstUserInfo = &pstSession->m_stUserInfo;
-    TbPlayer* ptbPlayer = &pstSession->m_stUserInfo.m_tbPlayer;
-    if(ptbPlayer->m_nAlid > 0 && ptbPlayer->m_nAlpos > EN_ALLIANCE_POS__REQUEST)
-    {
-        if(pstUserInfo->m_stAlGifts.m_dwGiftNum > 0)
-        {
-            std::sort(pstUserInfo->m_stAlGifts.m_atbGifts,
-                pstUserInfo->m_stAlGifts.m_atbGifts + pstUserInfo->m_stAlGifts.m_dwGiftNum,
-                CCommonHandleBefore::TbAlGift_CompareRe);
-        }
-
-        TbAl_gift_reward *ptbAlGiftReward = NULL;
-        TBOOL bIsExisted = FALSE;
-
-        for(TINT32 dwIdx = 0; dwIdx < pstUserInfo->m_stAlGifts.m_dwGiftNum && dwIdx < MAX_AL_IAP_GIFT_NUM; dwIdx++)  //更新Reward记录
-        {
-            if(pstUserInfo->m_udwAlGiftRewardNum >= MAX_AL_IAP_GIFT_NUM_SVR)
-            {
-                break;
-            }
-
-            bIsExisted = CCommonHandleBefore::IsExisted(pstUserInfo->m_atbAlGiftReward, pstUserInfo->m_udwAlGiftRewardNum, pstUserInfo->m_stAlGifts[dwIdx].m_nId);
-
-            if(FALSE == bIsExisted)  //记录不存在
-            {
-                ptbAlGiftReward = &pstUserInfo->m_atbAlGiftReward[pstUserInfo->m_udwAlGiftRewardNum];
-
-                ptbAlGiftReward->Set_Uid(pstUserInfo->m_tbPlayer.m_nUid);
-                ptbAlGiftReward->Set_Gid(pstUserInfo->m_stAlGifts[dwIdx].m_nId);
-                ptbAlGiftReward->Set_Status(EN_AL_GIFT_STATUS_NORMAL);
-                pstUserInfo->m_udwAlGiftRewardNum++;
-            }
-        }
-    }
-
+    //do nothing
     return 0;
 }
 
@@ -593,6 +568,18 @@ TINT32 CCommonHandleBefore::CheckPeaceTime(SSession *pstSession)
 			ptbPlayer->Set_Status(ptbPlayer->m_nStatus ^ EN_CITY_STATUS__NEW_PROTECTION);
 		}
 	}
+    else if (pstUser->m_stPlayerBuffList[EN_BUFFER_INFO_PEACE_TIME].m_astBuffDetail[EN_BUFF_TYPE_ITEM].m_dwTime > CTimeUtils::GetUnixTime() + 60)
+    {
+        if ((ptbPlayer->m_nStatus & EN_CITY_STATUS__AVOID_WAR)
+            || (ptbPlayer->m_nStatus & EN_CITY_STATUS__NEW_PROTECTION))
+        {
+            // do nothing
+        }
+        else
+        {
+            ptbPlayer->Set_Status(ptbPlayer->m_nStatus | EN_CITY_STATUS__AVOID_WAR);
+        }
+    }
 	
 	TSE_LOG_INFO(pstSession->m_poServLog, ("common_handle_before:CheckPeaceTime: uid=%u, time=[now=%u, end=%d] [seq=%u]", 
 		ptbPlayer->m_nUid, CTimeUtils::GetUnixTime(), 
@@ -663,4 +650,15 @@ TINT32 CCommonHandleBefore::ComputePlayerPriorityForKf( SSession * pstSession )
     }
 
     //todo: 需要运营提供标记
+}
+
+TINT32 CCommonHandleBefore::FixIapExGemNum(SSession *pstSession)
+{
+    if (pstSession->m_stUserInfo.m_tbLogin.m_nIap_promote_num > 0
+        && pstSession->m_stUserInfo.m_tbLogin.m_nIap_promote_gem_num == 0)
+    {
+        pstSession->m_stUserInfo.m_tbLogin.Set_Iap_promote_gem_num(pstSession->m_stUserInfo.m_tbLogin.m_nIap_promote_num * 100);
+    }
+
+    return 0;
 }

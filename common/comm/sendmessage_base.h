@@ -33,8 +33,8 @@ public:
         SBuffDetail* pstItemEffect, SSpGlobalRes *pstEffectInfo,
         TINT32 dwItemId, TINT64 ddwTargetId);
 
-    static TINT32 AddAlEventTips(SUserInfo *pstUser, TINT64 udwAid,TUINT32 udwEventType, TUINT32 udwRewardType, 
-        TUINT32 udwGoalorRank, TUINT32 udwScoreGet, string sScoreList, SGlobalRes *pstReward, string sEventInfo);
+    //static TINT32 AddAlEventTips(SUserInfo *pstUser, TINT64 udwAid,TUINT32 udwEventType, TUINT32 udwRewardType, 
+    //    TUINT32 udwGoalorRank, TUINT32 udwScoreGet, string sScoreList, SGlobalRes *pstReward, string sEventInfo);
 
     static TINT32 AddEventTips(SUserInfo *pstUser, TUINT32 udwEventType, TUINT32 udwRewardType, TUINT32 udwGoalorRank,
         TUINT32 udwScoreGet, string sScoreList, SOneGlobalRes *astRewardList, TUINT32 udwRewardNum, string sEventInfo,

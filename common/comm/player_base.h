@@ -50,10 +50,25 @@ public:
     static TVOID AddLordExp(SUserInfo *pstUser, SCityInfo *pstCity, TUINT32 udwExp, TBOOL bNeedBuff = TRUE);
 
     static TVOID AddDragonExp(SUserInfo *pstUser, TUINT32 udwExp, TBOOL bNeedBuff = TRUE);
+    // function  ===> 增加用户头像
+    // in_value  ===> ptbLordImage: 待操作的LordImage表
+    //           ===> udwImageId: 增加的头像id
+    static TINT32 AddLordImage(TbLord_image *ptbLord_image, TUINT32 udwImageId);
+    // function  ===> 增加用户装饰
+    // in_value  ===> ptbDecoration: 待操作的Decoration表
+    //           ===> udwDecorationId: 增加的装饰id
+    static TINT32 AddDecoration(TbDecoration *ptbDecoration, TUINT32 udwDecoId, TUINT32 udwItemNum = 1);
+    static TINT32 SetDecoration(TbDecoration *ptbDecoration, string strDecoId, TUINT32 udwItemNum);
+    static TINT32 HasEnoughDecoration(TbDecoration *ptbDecoration, TUINT32 udwDecoId, TUINT32 udwNum = 1);
+    static TINT32 CostDecoration(TbDecoration *ptbDecoration, TUINT32 udwDecoId);
+    static TINT32 PickUpDecoration(TbDecoration *ptbDecoration, TUINT32 udwDecoId);
 
     static TINT64 GetRawVipLevelPoint(TINT32 dwLevel);
-    static TINT32 GetRawVipLevel(TINT64 ddwVipPoint);
+    static TINT32 GetRawVipLevel(TbPlayer* ptbPlayer, TINT64 ddwVipPoint);
+    static TINT32 GetRawVipStage(TINT32 dwLevel);
+    static TINT64 GetMaxVipPoint(TbPlayer* ptbPlayer);
     static TINT64 GetMaxVipPoint();
+    static TINT32 GetMaxVipStage();
     static TINT32 GetVipLevel(TbPlayer* ptbPlayer);
     static TINT32 ComputePlayerLevel(TbPlayer* ptbPlayer);
     static TINT32 ComputeDragonLevel(TINT64 ddwExp);

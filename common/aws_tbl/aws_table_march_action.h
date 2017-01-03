@@ -56,6 +56,7 @@ enum ETbMarch_actionField
 	TbMARCH_ACTION_FIELD_DELAY_REPORT_ID = 45,
 	TbMARCH_ACTION_FIELD_SEQ = 46,
 	TbMARCH_ACTION_FIELD_DEF_TOTAL_TROOP = 47,
+	TbMARCH_ACTION_FIELD_EX_REWARD = 48,
 };
 
 enum ETbMarch_actionOpenType
@@ -120,6 +121,9 @@ typedef	BinBuf<SMonsterInfo, TBMARCH_ACTION_MONSTER_INFO_MAX_NUM>		TbMarch_actio
 #define	TBMARCH_ACTION_DEF_TOTAL_TROOP_MAX_NUM	1
 typedef	BinBuf<SCommonTroop, TBMARCH_ACTION_DEF_TOTAL_TROOP_MAX_NUM>		TbMarch_action_Def_total_troop;
 
+#define	TBMARCH_ACTION_EX_REWARD_MAX_NUM	100
+typedef	BinBuf<SOneGlobalRes, TBMARCH_ACTION_EX_REWARD_MAX_NUM>		TbMarch_action_Ex_reward;
+
 class TbMarch_action : public AwsTable
 {
 public:
@@ -171,6 +175,7 @@ public:
 	TINT64 m_nDelay_report_id;
 	TINT64 m_nSeq;
 	TbMarch_action_Def_total_troop m_bDef_total_troop;
+	TbMarch_action_Ex_reward m_bEx_reward;
 
 public:
 	static TableDesc oTableDesc;
@@ -235,6 +240,7 @@ public:
 		m_nDelay_report_id = 0;
 		m_nSeq = 0;
 		m_bDef_total_troop.Reset();
+		m_bEx_reward.Reset();
 		ClearFlag();
 	};
 	const TINT64& Get_Id()

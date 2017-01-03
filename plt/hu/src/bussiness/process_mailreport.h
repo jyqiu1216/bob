@@ -28,6 +28,8 @@ public:
 
     static TINT32 ProcessCmd_MailRewardCollect(SSession* pstSession, TBOOL& bNeedResponse);
 
+    static TINT32 ProcessCmd_GiftSend(SSession *pstSession, TBOOL &bNeedResponse);
+    static TINT32 ProcessCmd_GiftPickUp(SSession *pstSession, TBOOL &bNeedResponse);
     /***********************************report的相关操作**************************************/
     static TINT32 ProcessCmd_ReportGet(SSession *pstSession, TBOOL &bNeedResponse);
     static TINT32 ProcessCmd_ReportDetailGet(SSession *pstSession, TBOOL &bNeedResponse);
@@ -74,6 +76,7 @@ private:
     static bool TbReport_Compare_Reverse(const TbReport *pstA, const TbReport *pstB);
     static TINT64 GetReportDisplayClass(const TbReport_user& tbReportUser);
     static TINT32 SetReportStatus(TINT32 dwStatus, SSession* pstSession, TBOOL& bNeedResponse, TBOOL bClear = FALSE);
+    static string GetMailTitle(SSession* pstSession, TINT32 dwDocId);
 };
 
 #endif

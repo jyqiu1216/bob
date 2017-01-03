@@ -38,6 +38,10 @@ enum ETbLoginField
 	TbLOGIN_FIELD_TOTAL_PAY = 27,
 	TbLOGIN_FIELD_MAX_PAY = 28,
 	TbLOGIN_FIELD_LAST_PAY = 29,
+	TbLOGIN_FIELD_CUR_PLATFORM = 30,
+	TbLOGIN_FIELD_IAP_PROMOTE_NUM = 31,
+	TbLOGIN_FIELD_IAP_PROMOTE_GEM_NUM = 32,
+	TbLOGIN_FIELD_CLIENT_SEQ = 33,
 };
 
 enum ETbLoginOpenType
@@ -81,6 +85,10 @@ public:
 	TINT64 m_nTotal_pay;
 	TINT64 m_nMax_pay;
 	TINT64 m_nLast_pay;
+	string m_sCur_platform;
+	TINT64 m_nIap_promote_num;
+	TINT64 m_nIap_promote_gem_num;
+	TINT64 m_nClient_seq;
 
 public:
 	static TableDesc oTableDesc;
@@ -127,6 +135,10 @@ public:
 		m_nTotal_pay = 0;
 		m_nMax_pay = 0;
 		m_nLast_pay = 0;
+		m_sCur_platform = "";
+		m_nIap_promote_num = 0;
+		m_nIap_promote_gem_num = 0;
+		m_nClient_seq = 0;
 		ClearFlag();
 	};
 	const TINT64& Get_Sid()
@@ -388,6 +400,42 @@ public:
 	{
 		m_nLast_pay = nLast_pay;
 		m_mFlag[TbLOGIN_FIELD_LAST_PAY] = dwActionType;
+	}
+	const string& Get_Cur_platform()
+	{
+		return m_sCur_platform;
+	}
+	void Set_Cur_platform(const string& sCur_platform)
+	{
+		m_sCur_platform = sCur_platform;
+		m_mFlag[TbLOGIN_FIELD_CUR_PLATFORM] = sCur_platform.empty() ? UPDATE_ACTION_TYPE_DELETE : UPDATE_ACTION_TYPE_PUT;
+	}
+	const TINT64& Get_Iap_promote_num()
+	{
+		return m_nIap_promote_num;
+	}
+	void Set_Iap_promote_num(const TINT64& nIap_promote_num, int dwActionType=UPDATE_ACTION_TYPE_PUT)
+	{
+		m_nIap_promote_num = nIap_promote_num;
+		m_mFlag[TbLOGIN_FIELD_IAP_PROMOTE_NUM] = dwActionType;
+	}
+	const TINT64& Get_Iap_promote_gem_num()
+	{
+		return m_nIap_promote_gem_num;
+	}
+	void Set_Iap_promote_gem_num(const TINT64& nIap_promote_gem_num, int dwActionType=UPDATE_ACTION_TYPE_PUT)
+	{
+		m_nIap_promote_gem_num = nIap_promote_gem_num;
+		m_mFlag[TbLOGIN_FIELD_IAP_PROMOTE_GEM_NUM] = dwActionType;
+	}
+	const TINT64& Get_Client_seq()
+	{
+		return m_nClient_seq;
+	}
+	void Set_Client_seq(const TINT64& nClient_seq, int dwActionType=UPDATE_ACTION_TYPE_PUT)
+	{
+		m_nClient_seq = nClient_seq;
+		m_mFlag[TbLOGIN_FIELD_CLIENT_SEQ] = dwActionType;
 	}
 	//Scan命令使用,返回完整的请求包
 	AwsMap* OnScanReq(unsigned int udwIdxNo, bool bHasStartKey = false, bool bReturnConsumedCapacity = true,

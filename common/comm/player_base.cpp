@@ -109,22 +109,40 @@ TVOID CPlayerBase::AddDragonExp(SUserInfo *pstUser, TUINT32 udwExp, TBOOL bNeedB
 
 TINT64 CPlayerBase::GetRawVipLevelPoint(TINT32 dwLevel)
 {
+    //dwLevel = (dwLevel <= 1) ? 1 : dwLevel;
+    //const Json::Value& oJsonVip = CGameInfo::GetInstance()->m_oJsonRoot["game_vip"];
+    //if(dwLevel > static_cast<TINT32>(oJsonVip["a"].size()))
+    //{
+    //    return oJsonVip["a"][oJsonVip["a"].size() - 1].asInt64();
+    //}
+    //return oJsonVip["a"][dwLevel - 1].asInt64();
+
     dwLevel = (dwLevel <= 1) ? 1 : dwLevel;
-    const Json::Value& oJsonVip = CGameInfo::GetInstance()->m_oJsonRoot["game_vip"];
-    if(dwLevel > static_cast<TINT32>(oJsonVip["a"].size()))
+    const Json::Value& oJsonVip = CGameInfo::GetInstance()->m_oJsonRoot["game_vip_new"];
+    if (dwLevel > static_cast<TINT32>(oJsonVip.size()))
     {
-        return oJsonVip["a"][oJsonVip["a"].size() - 1].asInt64();
+        return oJsonVip[oJsonVip.size() - 1]["a"][0u].asInt64();
     }
-    return oJsonVip["a"][dwLevel - 1].asInt64();
+    return oJsonVip[dwLevel - 1]["a"][0u].asInt64();
 }
 
-TINT32 CPlayerBase::GetRawVipLevel(TINT64 ddwVipPoint)
+TINT32 CPlayerBase::GetRawVipLevel(TbPlayer* ptbPlayer, TINT64 ddwVipPoint)
 {
-    const Json::Value& oJsonVip = CGameInfo::GetInstance()->m_oJsonRoot["game_vip"];
-    TUINT32 dwVipLevel = 0;
-    for(dwVipLevel = 0; dwVipLevel < oJsonVip["a"].size(); ++dwVipLevel)
+    //const Json::Value& oJsonVip = CGameInfo::GetInstance()->m_oJsonRoot["game_vip"];
+    //TUINT32 dwVipLevel = 0;
+    //for(dwVipLevel = 0; dwVipLevel < oJsonVip["a"].size(); ++dwVipLevel)
+    //{
+    //    if(ddwVipPoint < oJsonVip["a"][dwVipLevel].asInt64())
+    //    {
+    //        break;
+    //    }
+    //}
+    //return dwVipLevel;
+    const Json::Value& oJsonVip = CGameInfo::GetInstance()->m_oJsonRoot["game_vip_new"];
+    TINT32 dwVipLevel = 0;
+    for (dwVipLevel = 0; dwVipLevel < oJsonVip.size(); dwVipLevel++)
     {
-        if(ddwVipPoint < oJsonVip["a"][dwVipLevel].asInt64())
+        if (ddwVipPoint < oJsonVip[dwVipLevel]["a"][0u].asInt64() || ptbPlayer->m_nVip_stage < oJsonVip[dwVipLevel]["a"][1u].asInt64())
         {
             break;
         }
@@ -132,10 +150,55 @@ TINT32 CPlayerBase::GetRawVipLevel(TINT64 ddwVipPoint)
     return dwVipLevel;
 }
 
+TINT32 CPlayerBase::GetRawVipStage(TINT32 dwLevel)
+{
+    //const Json::Value& oJsonVip = CGameInfo::GetInstance()->m_oJsonRoot["game_vip_new"];
+    //TINT32 dwVipStage;
+    //TUINT32 udwIdx;
+    //for (udwIdx = 0; udwIdx < oJsonVip.size(); udwIdx++)
+    //{
+    //    if (ddwVipPoint < oJsonVip[udwIdx]["a"][0u].asInt64())
+    //    {
+    //        break;
+    //    }
+    //}
+    //dwVipStage = oJsonVip[udwIdx-1]["a"][1u].asUInt();
+    //return dwVipStage;
+    dwLevel = (dwLevel <= 1) ? 1 : dwLevel;
+    const Json::Value& oJsonVip = CGameInfo::GetInstance()->m_oJsonRoot["game_vip_new"];
+    if (dwLevel > static_cast<TINT32>(oJsonVip.size()))
+    {
+        return oJsonVip[oJsonVip.size() - 1]["a"][1u].asInt64();
+    }
+    return oJsonVip[dwLevel - 1]["a"][1u].asInt64();
+}
+
+TINT64 CPlayerBase::GetMaxVipPoint(TbPlayer* ptbPlayer)
+{   //当前阶段最大vip点数
+    TUINT32 udwVipStage = ptbPlayer->m_nVip_stage;
+    TUINT32 udwIdx;
+    const Json::Value& oJsonVip = CGameInfo::GetInstance()->m_oJsonRoot["game_vip_new"];
+    for (udwIdx = 0; udwIdx < oJsonVip.size(); udwIdx++)
+    {
+        if (udwVipStage < oJsonVip[udwIdx]["a"][1u].asUInt())
+        {
+            udwIdx--;
+            break;
+        }
+    }
+    return  oJsonVip[udwIdx]["a"][0u].asInt64();
+}
+
 TINT64 CPlayerBase::GetMaxVipPoint()
 {
-    const Json::Value& oJsonVip = CGameInfo::GetInstance()->m_oJsonRoot["game_vip"];
-    return oJsonVip["a"][oJsonVip["a"].size() - 1].asInt64();
+    const Json::Value& oJsonVip = CGameInfo::GetInstance()->m_oJsonRoot["game_vip_new"];
+    return oJsonVip[oJsonVip.size() - 1]["a"][0u].asInt64();
+}
+
+TINT32 CPlayerBase::GetMaxVipStage()
+{
+    const Json::Value& oJsonVip = CGameInfo::GetInstance()->m_oJsonRoot["game_vip_new"];
+    return oJsonVip[oJsonVip.size() - 1]["a"][1u].asInt();
 }
 
 TINT32 CPlayerBase::GetVipLevel(TbPlayer* ptbPlayer)
@@ -144,7 +207,7 @@ TINT32 CPlayerBase::GetVipLevel(TbPlayer* ptbPlayer)
     {
         return 0;
     }
-    return CPlayerBase::GetRawVipLevel(ptbPlayer->m_nVip_point);
+    return CPlayerBase::GetRawVipLevel(ptbPlayer, ptbPlayer->m_nVip_point);
 }
 
 TINT32 CPlayerBase::ComputePlayerLevel(TbPlayer* ptbPlayer)
@@ -346,7 +409,7 @@ TBOOL CPlayerBase::IsMeetDragonSkillReliance(SUserInfo* pstUser, TINT32 dwSkillI
 
 TBOOL CPlayerBase::IsMeetDragonMonsterSkillReliance(SUserInfo* pstUser, TINT32 dwSkillId, TINT32 dwSKillLevel)
 {
-    const Json::Value& oJsonSkill = CGameInfo::GetInstance()->m_oJsonRoot["game_skill_monster"];
+    const Json::Value& oJsonSkill = CGameInfo::GetInstance()->m_oJsonRoot["game_dragon_skill_monster"];
     string strSkillId = CCommonFunc::NumToString(dwSkillId);
     SSkill* pstSkill = &pstUser->m_tbUserStat.m_bDragon_monster_skill[0];
     const Json::Value& oJsonSkillReliance = oJsonSkill[strSkillId]["r"]["r1"][dwSKillLevel - 1];
@@ -504,6 +567,120 @@ TINT32 CPlayerBase::CheckUpdtDragonEnergy(SUserInfo *pstUser)
     return dwRetCode;
 }
 
+TINT32 CPlayerBase::AddLordImage(TbLord_image *ptbLord_image, TUINT32 udwImageId)
+{
+    Json::Value& jTmp = ptbLord_image->m_jLord_image;
+    for (TUINT32 udwIdx = 0; udwIdx < jTmp.size(); udwIdx++)
+    {
+        if (udwImageId == jTmp[udwIdx]["id"].asUInt())
+        {
+            return 0;
+        }
+    }
+    Json::Value jImage = Json::Value(Json::objectValue);
+    jImage["id"] = udwImageId;
+    jTmp.append(jImage);
+    ptbLord_image->SetFlag(TbLORD_IMAGE_FIELD_LORD_IMAGE);
+    return 0;
+}
+
+TINT32 CPlayerBase::AddDecoration(TbDecoration *ptbDecoration, TUINT32 udwDecoId, TUINT32 udwItemNum /*=1*/)
+{
+    Json::Value& jTmp = ptbDecoration->m_jDecoration_list;
+    string strDecoid;
+    ostringstream oss;
+    oss << udwDecoId;
+    strDecoid = oss.str();
+    if (jTmp.isMember(strDecoid))
+    {
+        jTmp[strDecoid]["still_have_num"] = jTmp[strDecoid]["still_have_num"].asInt() + udwItemNum;
+        jTmp[strDecoid]["total_num"] = jTmp[strDecoid]["total_num"].asInt() + udwItemNum;
+    }
+    else
+    {
+        //种类数量限制
+        TUINT32 udwMax = CCommonBase::GetGameBasicVal(EN_GAME_BASIC_DECORATION_UPPER_LIMIT);
+        //TUINT32 udwMax = 3;
+        Json::Value::Members jMember = ptbDecoration->m_jDecoration_list.getMemberNames();
+        if (jMember.size() + udwItemNum > udwMax)
+        {
+            return EN_RET_CODE__DECORATION_OVREFLOW;
+        }
+        Json::Value jNewDeco = Json::Value(Json::objectValue);
+        jNewDeco["get_time"] = CTimeUtils::GetUnixTime();
+        jNewDeco["still_have_num"] = udwItemNum;
+        jNewDeco["total_num"] = udwItemNum;
+        jTmp[strDecoid] = jNewDeco;
+    }
+    ptbDecoration->SetFlag(TbDECORATION_FIELD_DECORATION_LIST);
+    return 0;
+}
+
+TINT32 CPlayerBase::SetDecoration(TbDecoration *ptbDecoration, string strDecoId, TUINT32 udwItemNum)
+{
+    Json::Value jTmp = ptbDecoration->m_jDecoration_list;
+    if (!jTmp.isMember(strDecoId) || jTmp[strDecoId]["total_num"].asUInt() < udwItemNum)
+    {
+        return EN_RET_CODE__REQ_PARAM_ERROR;
+    }
+    jTmp[strDecoId]["still_have_num"] = jTmp[strDecoId]["total_num"].asUInt() - udwItemNum;
+    ptbDecoration->Set_Decoration_list(jTmp);
+    return 0;
+}
+
+TINT32 CPlayerBase::HasEnoughDecoration(TbDecoration *ptbDecoration, TUINT32 udwDecoId, TUINT32 udwNum /*=1*/)
+{
+    Json::Value& jTmp = ptbDecoration->m_jDecoration_list;
+    string strDecoid;
+    ostringstream oss;
+    oss << udwDecoId;
+    strDecoid = oss.str();
+    if (!jTmp.isMember(strDecoid))
+    {
+        return -1;
+    }
+    if (jTmp[strDecoid]["still_have_num"].asInt() < udwNum)
+    {
+        return -2;
+    }
+    return 0;
+}
+
+TINT32 CPlayerBase::CostDecoration(TbDecoration *ptbDecoration, TUINT32 udwDecoId)
+{
+    Json::Value& jTmp = ptbDecoration->m_jDecoration_list;
+    string strDecoid;
+    ostringstream oss;
+    oss << udwDecoId;
+    strDecoid = oss.str();
+    if (!jTmp.isMember(strDecoid))
+    {
+        return -1;
+    }
+    if (jTmp[strDecoid]["still_have_num"].asInt() <= 0)
+    {
+        return -2;
+    }
+    jTmp[strDecoid]["still_have_num"] = jTmp[strDecoid]["still_have_num"].asInt() - 1;
+    ptbDecoration->Set_Decoration_list(jTmp);
+    return 0;
+}
+
+TINT32 CPlayerBase::PickUpDecoration(TbDecoration *ptbDecoration, TUINT32 udwDecoId)
+{
+    Json::Value& jTmp = ptbDecoration->m_jDecoration_list;
+    string strDecoid;
+    ostringstream oss;
+    oss << udwDecoId;
+    strDecoid = oss.str();
+    if (!jTmp.isMember(strDecoid))
+    {
+        return -1;
+    }
+    jTmp[strDecoid]["still_have_num"] = jTmp[strDecoid]["still_have_num"].asInt() + 1;
+    ptbDecoration->Set_Decoration_list(jTmp);
+    return 0;
+}
 
 TINT32 CPlayerBase::AddDragonEnergy(SUserInfo *pstUser, TUINT32 udwNum)
 {
@@ -947,9 +1124,17 @@ TBOOL CPlayerBase::CheckDeadPlayerBaseCondForClear( SUserInfo *pstUser )
 
     TUINT32 udwCastleLevel = CCityBase::GetBuildingLevelByFuncType(pstCity, EN_BUILDING_TYPE__CASTLE);
     TBOOL bDeadTime = FALSE;
-    if(udwCastleLevel <= 4)
+
+    if(udwCastleLevel <= 2)
     {
         if(udwCurTime - ptbPlayer->m_nUtime > 8 * 3600)
+        {
+            bDeadTime = TRUE;
+        }
+    }
+    else if(udwCastleLevel <= 4)
+    {
+        if(udwCurTime - ptbPlayer->m_nUtime > 24 * 3600)
         {
             bDeadTime = TRUE;
         }

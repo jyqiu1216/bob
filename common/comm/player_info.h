@@ -133,7 +133,9 @@ struct SUserInfo
 
     SAlGiftList m_stAlGifts;//联盟的联盟礼物
     TbAl_gift_reward m_atbAlGiftReward[MAX_AL_IAP_GIFT_NUM_SVR];
+    TUINT8 m_aucAlGiftRewardFlag[MAX_AL_IAP_GIFT_NUM_SVR];
     TUINT32 m_udwAlGiftRewardNum;
+    TbClear_al_gift m_tbClearAlGift;
 
     TbAl_help m_atbAl_help[MAX_AL_HELP_LIST_NUM];// 帮助过的联盟任务
     TUINT8 m_aucAlHelpFlag[MAX_AL_HELP_LIST_NUM];
@@ -167,6 +169,10 @@ struct SUserInfo
     TbAl_member m_tbSelfAlmember;
 
     TbBounty m_tbBounty;
+
+    TbLord_image m_tbLordImage;     //领主头像
+    TbDecoration m_tbDecoration;    //装饰品
+
     //辅助变量
     //联盟帮助
     TUINT32 m_udwAlCanHelpActionNum;
@@ -286,6 +292,7 @@ struct SUserInfo
 
     //连续登录相关和vip相关
     TINT64 m_ddwRawVipPoint;
+    TINT32 m_dwRawVipLevel;
     TBOOL m_bTodayFirstLogin;//表示本次操作是否当日第一次登录的变量, 在CCommonHandleAfter::UpdatePlayerUtimeAndLoginDay调用之后可以直接使用
 
     TUINT32 m_udwBeforAlid;

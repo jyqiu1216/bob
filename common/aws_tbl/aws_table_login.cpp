@@ -607,6 +607,58 @@ AwsMap* TbLogin::OnUpdateItemReq(
 			}
 			continue;
 		}
+		if (TbLOGIN_FIELD_CUR_PLATFORM == iter->first)
+		{
+			if (!m_sCur_platform.empty())
+			{
+				pUpdateItem->AddValue("/AttributeUpdates/cur_platform/Value/S", JsonEncode(m_sCur_platform, sJsonEncode));
+				pUpdateItem->AddValue("/AttributeUpdates/cur_platform/Action", "PUT");
+			}
+			else
+			{
+				pUpdateItem->AddValue("/AttributeUpdates/cur_platform/Action", "DELETE");
+			}
+			continue;
+		}
+		if (TbLOGIN_FIELD_IAP_PROMOTE_NUM == iter->first)
+		{
+			if(UPDATE_ACTION_TYPE_DELETE == iter->second)
+			{
+				pUpdateItem->AddValue("/AttributeUpdates/iap_promote_num/Action", "DELETE");
+			}
+			else
+			{
+				pUpdateItem->AddValue("/AttributeUpdates/iap_promote_num/Value/N", m_nIap_promote_num);
+				pUpdateItem->AddValue("/AttributeUpdates/iap_promote_num/Action", UpdateActionType2Str(iter->second));
+			}
+			continue;
+		}
+		if (TbLOGIN_FIELD_IAP_PROMOTE_GEM_NUM == iter->first)
+		{
+			if(UPDATE_ACTION_TYPE_DELETE == iter->second)
+			{
+				pUpdateItem->AddValue("/AttributeUpdates/iap_promote_gem_num/Action", "DELETE");
+			}
+			else
+			{
+				pUpdateItem->AddValue("/AttributeUpdates/iap_promote_gem_num/Value/N", m_nIap_promote_gem_num);
+				pUpdateItem->AddValue("/AttributeUpdates/iap_promote_gem_num/Action", UpdateActionType2Str(iter->second));
+			}
+			continue;
+		}
+		if (TbLOGIN_FIELD_CLIENT_SEQ == iter->first)
+		{
+			if(UPDATE_ACTION_TYPE_DELETE == iter->second)
+			{
+				pUpdateItem->AddValue("/AttributeUpdates/client_seq/Action", "DELETE");
+			}
+			else
+			{
+				pUpdateItem->AddValue("/AttributeUpdates/client_seq/Value/N", m_nClient_seq);
+				pUpdateItem->AddValue("/AttributeUpdates/client_seq/Action", UpdateActionType2Str(iter->second));
+			}
+			continue;
+		}
 		assert(0);
 	}
 	if(bUpdateFlag)
@@ -728,6 +780,13 @@ AwsMap* TbLogin::OnWriteItemReq(int dwActionType)
 		pItem->AddValue("/total_pay/N", m_nTotal_pay);
 		pItem->AddValue("/max_pay/N", m_nMax_pay);
 		pItem->AddValue("/last_pay/N", m_nLast_pay);
+		if (!m_sCur_platform.empty())
+		{
+			pItem->AddValue("/cur_platform/S", JsonEncode(m_sCur_platform, sJsonEncode));
+		}
+		pItem->AddValue("/iap_promote_num/N", m_nIap_promote_num);
+		pItem->AddValue("/iap_promote_gem_num/N", m_nIap_promote_gem_num);
+		pItem->AddValue("/client_seq/N", m_nClient_seq);
 	}
 	else if (WRITE_ACTION_TYPE_DELETE == dwActionType)
 	{
@@ -804,6 +863,13 @@ void TbLogin::OnWriteItemReq(AwsMap* pWriteItem, int dwActionType)
 		pItem->AddValue("/total_pay/N", m_nTotal_pay);
 		pItem->AddValue("/max_pay/N", m_nMax_pay);
 		pItem->AddValue("/last_pay/N", m_nLast_pay);
+		if (!m_sCur_platform.empty())
+		{
+			pItem->AddValue("/cur_platform/S", JsonEncode(m_sCur_platform, sJsonEncode));
+		}
+		pItem->AddValue("/iap_promote_num/N", m_nIap_promote_num);
+		pItem->AddValue("/iap_promote_gem_num/N", m_nIap_promote_gem_num);
+		pItem->AddValue("/client_seq/N", m_nClient_seq);
 	}
 	else if (WRITE_ACTION_TYPE_DELETE == dwActionType)
 	{
@@ -1024,6 +1090,13 @@ AwsMap* TbLogin::OnPutItemReq(
 	pPutItem->AddValue("/Item/total_pay/N", m_nTotal_pay);
 	pPutItem->AddValue("/Item/max_pay/N", m_nMax_pay);
 	pPutItem->AddValue("/Item/last_pay/N", m_nLast_pay);
+	if (!m_sCur_platform.empty())
+	{
+		pPutItem->AddValue("/Item/cur_platform/S", JsonEncode(m_sCur_platform, sJsonEncode));
+	}
+	pPutItem->AddValue("/Item/iap_promote_num/N", m_nIap_promote_num);
+	pPutItem->AddValue("/Item/iap_promote_gem_num/N", m_nIap_promote_gem_num);
+	pPutItem->AddValue("/Item/client_seq/N", m_nClient_seq);
 	ostringstream oss;
 	for (unsigned int i = 0; i < expected_desc.vecExpectedItem.size(); ++i)
 	{
@@ -1239,6 +1312,26 @@ int TbLogin::OnResponse(const Json::Value& item)
 		if (vecMembers[i] == "last_pay")
 		{
 			m_nLast_pay = strtoll(item["last_pay"]["N"].asString().c_str(), NULL, 10);
+			continue;
+		}
+		if (vecMembers[i] == "cur_platform")
+		{
+			m_sCur_platform = item["cur_platform"]["S"].asString();
+			continue;
+		}
+		if (vecMembers[i] == "iap_promote_num")
+		{
+			m_nIap_promote_num = strtoll(item["iap_promote_num"]["N"].asString().c_str(), NULL, 10);
+			continue;
+		}
+		if (vecMembers[i] == "iap_promote_gem_num")
+		{
+			m_nIap_promote_gem_num = strtoll(item["iap_promote_gem_num"]["N"].asString().c_str(), NULL, 10);
+			continue;
+		}
+		if (vecMembers[i] == "client_seq")
+		{
+			m_nClient_seq = strtoll(item["client_seq"]["N"].asString().c_str(), NULL, 10);
 			continue;
 		}
 	}

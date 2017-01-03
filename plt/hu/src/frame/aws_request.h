@@ -87,7 +87,7 @@ public:
 
     static int EventTipsQuery(SSession *pstSession, TINT64 ddwUid, TUINT32 udwLimit);
 
-    static int AlEventTipsQuery(SSession *pstSession, TINT64 ddwAlid, TUINT32 udwLimit);
+    //static int AlEventTipsQuery(SSession *pstSession, TINT64 ddwAlid, TUINT32 udwLimit);
 
     static int AllianceWallQuery(SSession *pstSession, TUINT32 udwAlId);
 
@@ -138,6 +138,11 @@ public:
     static int BlackListGet(SSession *pstSession, TUINT32 udwSUid, TUINT32 udwTUid);
 
     static int DataOutputGet(SSession *pstSession, TUINT32 udwUid);
+
+    static int LordImageGet(SSession *pstSession, TUINT32 udwUid);
+
+    static int DecorationGet(SSession *pstSession, TUINT32 udwUid);
+
 //logic
 public:
     static int NewCityIdQuery(SSession *pstSession, TUINT32 udwSvrId, TUINT8 ucProvinceId);

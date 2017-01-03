@@ -16,6 +16,8 @@
 #include "backpack_logic.h"
 #include "wild_info.h"
 #include "output_conf.h"
+#include "appsflyer_countries.h"
+#include "blog_time.h"
 
 TVOID CUserJson::GenDataJson(SSession* pstSession, Json::Value& rJson)
 {
@@ -97,6 +99,14 @@ TVOID CUserJson::GenDataJson(SSession* pstSession, Json::Value& rJson)
     GenIdolInfo(pstSession, rJson);
 
     GenThroneInfo(pstSession, rJson);
+
+    GenIdolDetailInfo(pstSession, rJson);
+
+    GenLordImageInfo(pstSession, rJson);
+
+    GeDecorationInfo(pstSession, rJson);
+
+    GeBlogTimeInfo(pstSession, rJson);
 }
 
 TVOID CUserJson::GenLoginJson(SSession* pstSession, Json::Value& rjsonResult)
@@ -169,6 +179,15 @@ TVOID CUserJson::GenLoginJson(SSession* pstSession, Json::Value& rjsonResult)
     jsonSvrLogin["dragon_unlock_flag"] = pstSession->m_dwDragonUnlockFlag;
     jsonSvrLogin["kf_lv"] = pstSession->m_dwKfLv;
     jsonSvrLogin["login_time"] = pstSession->m_stUserInfo.m_tbLogin.m_nLast_lg_time;
+
+    jsonSvrLogin["iap_promote_num"] = ptbLogin->m_nIap_promote_gem_num;
+
+    jsonSvrLogin["appflyer_flag"] = 0;
+    if (pstSession->m_stReqParam.m_ucLoginStatus == EN_LOGIN_STATUS__LOGIN && strlen(pstSession->m_szClientIp) > 0)
+    {
+        jsonSvrLogin["appflyer_flag"] = CAppsflyerCountries::GetInstance()->GetAppsflyerFlag(pstSession->m_szClientIp);
+    }
+    jsonSvrLogin["client_seq"] = ptbLogin->m_nClient_seq;
 }
 
 TVOID CUserJson::GenPlayerJson(SSession* pstSession, Json::Value& rjsonResult)
@@ -2179,6 +2198,25 @@ TVOID CUserJson::GenRewardWindowNewInfo(SSession *pstSession, Json::Value& rJson
     }
 }
 
+TVOID CUserJson::GenLordImageInfo(SSession *pstSession, Json::Value& rJson)
+{
+    TbLord_image* ptbLord_image = &pstSession->m_stUserInfo.m_tbLordImage;
+    Json::Value& jLordImageInfo = rJson["svr_unlock_lord_image"];
+
+    jLordImageInfo = ptbLord_image->m_jLord_image;
+}
+
+TVOID CUserJson::GeDecorationInfo(SSession *pstSession, Json::Value& rJson)
+{
+    TbDecoration* ptbDecoration = &pstSession->m_stUserInfo.m_tbDecoration;
+    Json::Value& jDecoInfo = rJson["svr_decoration"];
+    jDecoInfo = Json::Value(Json::objectValue);
+
+    jDecoInfo["open_time"] = ptbDecoration->m_nOpen_time;
+    jDecoInfo["series_list"] = ptbDecoration->m_jSeries_list;
+    jDecoInfo["decoration_list"] = ptbDecoration->m_jDecoration_list;
+}
+
 TVOID CUserJson::GenRandomRewardInfo(SSession* pstSession, Json::Value& rJson)
 {
     Json::Value& jsonRandomReward = rJson["svr_random_reward_info"];
@@ -2412,4 +2450,91 @@ TVOID CUserJson::GenThroneInfo(SSession *pstSession, Json::Value& rJson)
     jThroneInfo["reinforce_num"] = ptbThrone->m_nReinforce_num;
     jThroneInfo["reinforce_troop_limit"] = CCommonBase::GetGameBasicVal(EN_GAME_BASIC_THRONE_TROOP_NUM_LIMIT);
     jThroneInfo["reinforce_troop_num"] = ptbThrone->m_nReinforce_troop_num;
+}
+
+TVOID CUserJson::GenIdolDetailInfo(SSession* pstSession, Json::Value& rJson)
+{
+    Json::Value& jsonIdolInfo = rJson["svr_idol_detail_info"];
+    jsonIdolInfo = Json::Value(Json::objectValue);
+
+    TbIdol *ptbIdol = NULL;
+    //    TUINT32 udwPos = pstSession->m_tbTmpMap.m_nId;
+
+    for (TUINT32 udwIdx = 0; udwIdx < pstSession->m_udwIdolNum; udwIdx++)
+    {
+        //         if (udwPos == pstSession->m_atbIdol[udwIdx].m_nPos)
+        //         {
+        //             ptbIdol = &pstSession->m_atbIdol[udwIdx];
+        //             break;
+        //         }
+
+        ptbIdol = &pstSession->m_atbIdol[udwIdx];
+        Json::Value& jOneIdol = jsonIdolInfo[CCommonFunc::NumToString(ptbIdol->m_nPos)];
+        jOneIdol = Json::Value(Json::objectValue);
+        jOneIdol["status"] = ptbIdol->m_nStatus;
+        jOneIdol["end_time"] = ptbIdol->m_nEnd_time;
+
+        jOneIdol["buff"] = Json::Value(Json::arrayValue);
+        Json::Value::Members members = ptbIdol->m_jInfo["b"].getMemberNames();
+        for (Json::Value::Members::iterator it = members.begin(); it != members.end(); it++)
+        {
+            jOneIdol["buff"].append(ptbIdol->m_jInfo["b"][*it]);
+        }
+
+        jOneIdol["rank"] = ptbIdol->m_jRank;
+        if (!jOneIdol["rank"].isArray())
+        {
+            jOneIdol["rank"] = Json::Value(Json::arrayValue);
+        }
+        TBOOL bIsFind = FALSE;
+        for (TUINT32 udwIdx = 0; udwIdx < ptbIdol->m_jRank.size(); udwIdx++)
+        {
+            if (pstSession->m_stReqParam.m_udwAllianceId == ptbIdol->m_jRank[udwIdx]["alid"].asUInt())
+            {
+                jOneIdol["self_rank"] = ptbIdol->m_jRank[udwIdx];
+                bIsFind = TRUE;
+                break;
+            }
+        }
+        if (bIsFind == FALSE)
+        {
+            jOneIdol["self_rank"] = Json::Value(Json::objectValue);
+            jOneIdol["self_rank"]["rank"] = 0;
+            jOneIdol["self_rank"]["alid"] = -1;
+            jOneIdol["self_rank"]["point"] = 0;
+            jOneIdol["self_rank"]["al_nick"] = "";
+            jOneIdol["self_rank"]["al_name"] = "";
+        }
+
+        jOneIdol["alliance"] = Json::Value(Json::objectValue);
+        if (ptbIdol->m_nStatus == EN_IDOL_STATUS__BUFF_PERIOD && ptbIdol->m_jRank.size() > 0)
+        {
+            jOneIdol["alliance"]["alid"] = ptbIdol->m_jRank[0U]["alid"];
+            jOneIdol["alliance"]["al_nick"] = ptbIdol->m_jRank[0U]["al_nick"];
+            jOneIdol["alliance"]["al_name"] = ptbIdol->m_jRank[0U]["al_name"];
+        }
+        else
+        {
+            jOneIdol["alliance"]["alid"] = -1;
+            jOneIdol["alliance"]["al_nick"] = "";
+            jOneIdol["alliance"]["al_name"] = "";
+        }
+    }
+}
+
+TVOID CUserJson::GeBlogTimeInfo(SSession* pstSession, Json::Value& rJson)
+{
+    TbPlayer* ptbPlayer = &pstSession->m_stUserInfo.m_tbPlayer;
+    string strSid = CCommonFunc::NumToString(ptbPlayer->m_nSid);
+    CBlogTime *poBlogTime = CBlogTime::GetInstance();
+    Json::Value& jBlogTime = rJson["svr_blog_time"];
+    jBlogTime = Json::Value(Json::objectValue);
+    if (pstSession->m_stReqParam.m_ucIsNewPlayer == EN_NEW_PLAYER__FAKE)
+    {
+        return;
+    }
+    if (poBlogTime->m_jBlogTime.isMember(strSid))
+    {
+        jBlogTime["timestamp"] = poBlogTime->m_jBlogTime[strSid];
+    }
 }

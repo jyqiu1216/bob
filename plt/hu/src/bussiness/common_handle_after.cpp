@@ -29,6 +29,9 @@ TINT32 CCommonHandleAfter::Process_CommonHandleAfter(SSession *pstSession)
     TINT32 dwRetCode = 0;
     SUserInfo *pstUser = &pstSession->m_stUserInfo;
 
+    //wave@20161130: for bug check
+    CQuestLogic::CheckPlayerTimeQuestValid(pstUser, "handle_after_beg");
+
     CCommonHandleAfter::CorrectExp(pstSession);
 
     SCityInfo *pstCity = &pstUser->m_stCityInfo;
@@ -477,6 +480,10 @@ TINT32 CCommonHandleAfter::Process_CommonHandleAfter(SSession *pstSession)
 
     CancelPeaceTimeWhenBecomeKing(pstSession);
 
+
+    //wave@20161130: for bug check
+    CQuestLogic::CheckPlayerTimeQuestValid(pstUser, "handle_after_end");
+
     return 0;
 }
 
@@ -540,11 +547,14 @@ TINT32 CCommonHandleAfter::UpdatePlayerVipInfo(SSession *pstSession)
         TINT64 ddwPointAdd = CCommonBase::GetConLoginVipPoint(pstUser->m_tbUserStat.m_nCon_login_days);
         CCommonBase::AddVipPoint(pstUser, pstCity, ddwPointAdd);
     }
-
-    TINT32 dwRawVipLevel = CPlayerBase::GetRawVipLevel(pstUser->m_ddwRawVipPoint);
-    TINT32 dwNowVipLevel = CPlayerBase::GetRawVipLevel(pstUser->m_tbPlayer.m_nVip_point);
+    if (pstUser->m_tbPlayer.m_nVip_stage == 0)
+    {
+        pstUser->m_tbPlayer.Set_Vip_stage(1);
+    }
+    TINT32 dwRawVipLevel = pstUser->m_dwRawVipLevel;
+    TINT32 dwNowVipLevel = CPlayerBase::GetRawVipLevel(&pstUser->m_tbPlayer, pstUser->m_tbPlayer.m_nVip_point);
     TINT32 dwLevelUp = dwNowVipLevel - dwRawVipLevel;
-    if(dwLevelUp > 0)
+    if (dwLevelUp > 0)
     {
         CCommonBase::AddVipTime(pstUser, pstCity, CCommonBase::GetVipLevelUpRewardTime(dwLevelUp));
         CSendMessageBase::AddTips(pstUser, EN_TIPS_TYPY__VIP_LEVEL_UP, pstUser->m_tbPlayer.m_nUid, FALSE, dwNowVipLevel, 0, 0);
@@ -963,9 +973,9 @@ TINT32 CCommonHandleAfter::UpdateUserInfoToMap(SSession *pstSession)
                 ptbMap->Set_Al_pos(0);
             }
         }
-        if(ptbMap->m_nVip_level != CPlayerBase::GetRawVipLevel(ptbPlayer->m_nVip_point))
+        if (ptbMap->m_nVip_level != CPlayerBase::GetRawVipLevel(ptbPlayer, ptbPlayer->m_nVip_point))
         {
-            ptbMap->Set_Vip_level(CPlayerBase::GetRawVipLevel(ptbPlayer->m_nVip_point));
+            ptbMap->Set_Vip_level(CPlayerBase::GetRawVipLevel(ptbPlayer, ptbPlayer->m_nVip_point));
         }
         if(ptbMap->m_nVip_etime != ptbPlayer->m_nVip_etime)
         {
@@ -1713,34 +1723,7 @@ TINT32 CCommonHandleAfter::UpdateNotiTimer(SSession* pstSession)
 // function  ===> 更新用户的al_gift
 TINT32 CCommonHandleAfter::ComputeAllianceGift(SSession *pstSession)
 {
-    SUserInfo* pstUserInfo = &pstSession->m_stUserInfo;
-    TbPlayer* ptbPlayer = &pstSession->m_stUserInfo.m_tbPlayer;
-    if(ptbPlayer->m_nAlid > 0 && ptbPlayer->m_nAlpos > EN_ALLIANCE_POS__REQUEST)
-    {
-        TbAl_gift_reward *ptbAlGiftReward = NULL;
-        TBOOL bIsExisted = FALSE;
-
-        for(TINT32 dwIdx = 0; dwIdx < pstUserInfo->m_stAlGifts.m_dwGiftNum && dwIdx < MAX_AL_IAP_GIFT_NUM; dwIdx++)  //更新Reward记录
-        {
-            if(pstUserInfo->m_udwAlGiftRewardNum >= MAX_AL_IAP_GIFT_NUM_SVR)
-            {
-                break;
-            }
-
-            bIsExisted = CCommonHandleAfter::IsExisted(pstUserInfo->m_atbAlGiftReward, pstUserInfo->m_udwAlGiftRewardNum, pstUserInfo->m_stAlGifts[dwIdx].m_nId);
-
-            if(FALSE == bIsExisted)  //记录不存在
-            {
-                ptbAlGiftReward = &pstUserInfo->m_atbAlGiftReward[pstUserInfo->m_udwAlGiftRewardNum];
-
-                ptbAlGiftReward->Set_Uid(pstUserInfo->m_tbPlayer.m_nUid);
-                ptbAlGiftReward->Set_Gid(pstUserInfo->m_stAlGifts[dwIdx].m_nId);
-                ptbAlGiftReward->Set_Status(EN_AL_GIFT_STATUS_NORMAL);
-                pstUserInfo->m_udwAlGiftRewardNum++;
-            }
-        }
-    }
-
+    //do nothing
     return 0;
 }
 
@@ -2301,15 +2284,16 @@ TINT32 CCommonHandleAfter::CheckUserWild(SSession *pstSession)
     SCityInfo *pstCity = &pstUser->m_stCityInfo;
 
     // 检查更新wild的联盟信息
+    TUINT32 udwRealAlid = ptbPlayer->m_nAlpos > 0 ? ptbPlayer->m_nAlid / PLAYER_ALLIANCE_ID_OFFSET : 0;
     for (TUINT32 udwIdx = 0; udwIdx < pstUser->m_udwWildNum; ++udwIdx)
     {
         TbMap *ptbWild = &pstUser->m_atbWild[udwIdx];
-        if (ptbWild->m_nUid == ptbPlayer->m_nUid && ptbWild->m_nAlid != ptbPlayer->m_nAlid / PLAYER_ALLIANCE_ID_OFFSET)
+        if (ptbWild->m_nUid == ptbPlayer->m_nUid && ptbWild->m_nAlid != udwRealAlid)
         {
-            ptbWild->Set_Alid(ptbPlayer->m_nAlid / PLAYER_ALLIANCE_ID_OFFSET);
+            ptbWild->Set_Alid(udwRealAlid);
             ptbWild->Set_Alname(ptbPlayer->m_sAlname);
             ptbWild->Set_Al_nick(ptbPlayer->m_sAl_nick_name);
-            pstUser->m_aucWildFlag[udwIdx] = EN_TABLE_UPDT_FLAG__UNCHANGE;
+            pstUser->m_aucWildFlag[udwIdx] = EN_TABLE_UPDT_FLAG__CHANGE;
         }
     }
 

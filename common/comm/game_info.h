@@ -12,6 +12,9 @@ using namespace std;
 using namespace wtse::log;
 
 #define UPDATE_GAME_JSON_FLAG_FILE      ("../data/update_game_json_flag")
+#define UPDATE_SUB_GAME_JSON_FLAG_FILE      ("../data/sub_game_json_update_flag")
+
+#define SUB_GAME_JSON_FILE              ("../data/sub_game.json")
 
 class CGameInfo
 {
@@ -74,6 +77,8 @@ public:
     TVOID LoadTaskList();
     const vector<TINT64>& GetTaskList();
     vector<TINT64> m_vecTaskList;
+
+    TINT32			LoadSubGame(const TCHAR *pszFileName, CTseLogger *poLog);
 };
 
 #endif

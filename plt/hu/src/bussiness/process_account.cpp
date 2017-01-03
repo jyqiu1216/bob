@@ -34,7 +34,7 @@ TINT32 CProcessAccount::ProcessCmd_GemRecharge(SSession *pstSession, TBOOL &bNee
 
     TFLOAT32 fWhiteWeekMaxIap = 0.0;
     TBOOL bIsWhiteUser = CIAPWhiteList::bIsWhitePlayer(tbPlayer.m_nUid, fWhiteWeekMaxIap);
-    TFLOAT32 fIapNum = CCommonLogic::GetIapNumByRechargeGem(udwRechargeGem);
+    TFLOAT32 fIapNum = CCommonLogic::GetIapPayCent(pstSession->m_stReqParam.m_szItemId) / 100.0;
 
     //wave@20140312: 添加transaction id保护
     if(sTransId.length() == 0)
@@ -70,28 +70,13 @@ TINT32 CProcessAccount::ProcessCmd_GemRecharge(SSession *pstSession, TBOOL &bNee
         }
 
         /******************************************* 线下测试环境需要的加gem功能 *******************************************/
-
         if (1 == dwRechargeType && 100 != udwRechargeGem) //reward 100gem不给联盟gift
         {
             tbLogin.Set_Gem(tbLogin.m_nGem + udwRechargeGem);
             pstSession->m_udwCommandStep = EN_COMMAND_STEP__END;
 
-            //生成一条iap gift记录
-            /* hu不发联盟礼物
-            if (tbPlayer.m_nAlid > 0 && tbPlayer.m_nAlpos > EN_ALLIANCE_POS__REQUEST)
-            {
-                TINT32 dwRetCode = CCommonLogic::GenIapAlGift(&pstSession->m_stUserInfo.m_tbAlliance, udwRechargeGem,
-                    tbLogin.m_nUid, pstUserInfo->m_stAlGifts, &pstSession->m_stUserInfo.m_tbLogin);
-                if (dwRetCode != 0)
-                {
-                    TSE_LOG_ERROR(CGameInfo::GetInstance()->m_poLog, ("ProcessCmd_GemRecharge: gen iap al_gift error[retcode=%d] [seq=%u]",
-                        dwRetCode, pstSession->m_udwSeqNo));
-                }
-            }
-            */
-
             //更新玩家的购买力标记
-            TUINT32 udwAbility = GetPurchaseAbility(udwRechargeGem);
+            TUINT32 udwAbility = CCommonLogic::GetPurchaseAbility(udwRechargeGem);
             if (udwAbility > tbLogin.m_nAbility)
             {
                 tbLogin.Set_Ability(udwAbility);
@@ -166,44 +151,57 @@ TINT32 CProcessAccount::ProcessCmd_GemRecharge(SSession *pstSession, TBOOL &bNee
         /*
         if (0 == dwRechargeType)
         {
-        Json::Reader jReader;
-        CJsoncppUnseri jUnseri;
-        Json::Value jTmp;
-        if (pstSession->m_stPurchaseRsp.udwResType == EN_CONTENT_TYPE__STRING)
-        {
-        if (jReader.parse(pstSession->m_stPurchaseRsp.sRspContent, jTmp) == FALSE)
-        {
-        pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__PURCHASE_CHECK_FAIL;
-        TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessReqCommand_GemRecharge: parse purchase check rsp fail [seq=%u]",
-        pstSession->m_stUserInfo.m_udwBSeqNo));
-        return -3;
-        }
-        }
-        else
-        {
-        if (jUnseri.unserializeToDom(pstSession->m_stPurchaseRsp.sRspContent.c_str(), jTmp, UNSERI_MODE_REPLACE) != 0)
-        {
-        pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__PURCHASE_CHECK_FAIL;
-        TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessReqCommand_GemRecharge: parse purchase check rsp fail [seq=%u]",
-        pstSession->m_stUserInfo.m_udwBSeqNo));
-        return -3;
-        }
-        }
+            Json::Reader jReader;
+            CJsoncppUnseri jUnseri;
+            Json::Value jTmp;
+            if (pstSession->m_stPurchaseRsp.udwResType == EN_CONTENT_TYPE__STRING)
+            {
+                if (jReader.parse(pstSession->m_stPurchaseRsp.sRspContent, jTmp) == FALSE)
+                {
+                    pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__PURCHASE_CHECK_FAIL;
+                    TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessReqCommand_GemRecharge: parse purchase check rsp fail [seq=%u]",
+                        pstSession->m_stUserInfo.m_udwBSeqNo));
+                    return -3;
+                }
+            }
+            else
+            {
+                if (jUnseri.unserializeToDom(pstSession->m_stPurchaseRsp.sRspContent.c_str(), jTmp, UNSERI_MODE_REPLACE) != 0)
+                {
+                    pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__PURCHASE_CHECK_FAIL;
+                    TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessReqCommand_GemRecharge: parse purchase check rsp fail [seq=%u]",
+                        pstSession->m_stUserInfo.m_udwBSeqNo));
+                    return -3;
+                }
+            }
 
-        if (!jTmp.isMember("ret_code") || jTmp["ret_code"].asInt() != 0)
-        {
-        pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__PURCHASE_CHECK_FAIL;
-        TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessReqCommand_GemRecharge: purchase check failed[errmsg=%s]. [seq=%u]",
-        jTmp["error_msg"].asString().c_str(), pstSession->m_stUserInfo.m_udwBSeqNo));
-        return -3;
-        }
+            if (!jTmp.isMember("ret_code") || jTmp["ret_code"].asInt() != 0)
+            {
+                pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__PURCHASE_CHECK_FAIL;
+                TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessReqCommand_GemRecharge: purchase check failed[errmsg=%s]. [seq=%u]",
+                    jTmp["error_msg"].asString().c_str(), pstSession->m_stUserInfo.m_udwBSeqNo));
+                return -3;
+            }
 
-        pstSession->m_stReqParam.m_ucIsSandBox = jTmp["sandbox"].asInt();
+            if (pstSession->m_stReqParam.m_ucIsSandBox == 0)
+            {
+                pstSession->m_stReqParam.m_ucIsSandBox = jTmp["sandbox"].asInt();
+            }
         }
         */
 
         /******************************************* 正常购买iap情况 *******************************************/
         pstSession->m_udwCommandStep = EN_COMMAND_STEP__2;
+
+        if (!bIsWhiteUser && pstSession->m_stReqParam.m_ucIsSandBox != 0)
+        {
+            TSE_LOG_ERROR(CGameInfo::GetInstance()->m_poLog, ("ProcessCmd_GemRecharge: uid=%ld is not in white list but use sandbox[%u] [seq=%u]",
+                pstUserInfo->m_tbPlayer.m_nUid, pstSession->m_stReqParam.m_ucIsSandBox, pstUserInfo->m_udwBSeqNo));
+            //pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__IAP_WHITE_MAX;
+            //return -1;
+            pstSession->m_udwCommandStep = EN_COMMAND_STEP__END;
+            return 0;
+        }
 
         if (0 == dwRechargeType)
         {
@@ -394,6 +392,35 @@ TINT32 CProcessAccount::ProcessCmd_GemRecharge(SSession *pstSession, TBOOL &bNee
         tbLogin.Set_Gem_seq(tbLogin.m_nGem_seq + 1);
         tbLogin.Set_Gem(tbLogin.m_nGem + udwRechargeGem);
 
+        if (strcmp(pstSession->m_stReqParam.m_szItemId.c_str(), "1600gems9") == 0
+            && ddwProjectId != 0)
+        {
+            TINT64 ddwExGem = CCommonBase::GetGameBasicVal(EN_GAME_BASIC_IAP_PROMOTE_EX_GEM);
+            /*
+            if (tbLogin.m_nIap_promote_gem_num == 0 && ddwExGem != 0)
+            {
+                TCHAR szTitle[128];
+                sprintf(szTitle, "Accumulate FREE Gems Gifts");
+                TCHAR szContent[4096];
+                sprintf(szContent, "My Lord,\n"
+                    "\n"
+                    "Congratulations on your purchase of this great gems pack valued USD 99.99!\n"
+                    "\n"
+                    "To show our gratitude to your continued support, from now on, you will earn 100 more Gems for every purchase of USD 99.99 Pack. For example, if you buy 18,000 gems with USD 99.99 in your First Purchase, you'll get 18,100 Gems on your Second Purchase, and 18,200 gems for your Third Purchase...That is to say, with your accumulated purchases, you will receive a pack of greater value with accumulative free gems gifts.\n"
+                    "\n"
+                    "Gems are like magic. They are like your right-hand man to boost your city faster and stronger! Also they are like sharp swords to help you revenge hard and quick.\n"
+                    "\n"
+                    "Be a wise wizard and wield the Gems Magic right! And don't forget to check the gems store where surprises await!\n"
+                    "\n"
+                    "Cheers,\n"
+                    "Blaze of Battle");
+                CMsgBase::SendOperateMail(tbLogin.m_nUid, 0, tbLogin.m_nSid, SYSTEM_ACTIVITY, 2, szTitle, szContent, "", "");
+            }
+            */
+            tbLogin.Set_Gem(tbLogin.m_nGem + tbLogin.m_nIap_promote_gem_num);
+            tbLogin.Set_Iap_promote_gem_num(tbLogin.m_nIap_promote_gem_num + ddwExGem);
+        }
+
         // 首次充值发送运营邮件
         if(tbLogin.m_nGem_buy == 0 && udwRechargeGem != 0)
         {
@@ -409,8 +436,8 @@ TINT32 CProcessAccount::ProcessCmd_GemRecharge(SSession *pstSession, TBOOL &bNee
         tbLogin.Set_Last_buy(udwRechargeGem);
         tbLogin.Set_Last_buy_time(CTimeUtils::GetUnixTime());
 
-        TUINT32 udwPay = GetIapPay(pstSession->m_stReqParam.m_szItemId);
-        TUINT32 udwPayCent = GetIapPayCent(pstSession->m_stReqParam.m_szItemId);
+        TUINT32 udwPay = CCommonLogic::GetIapPay(pstSession->m_stReqParam.m_szItemId);
+        TUINT32 udwPayCent = CCommonLogic::GetIapPayCent(pstSession->m_stReqParam.m_szItemId);
         tbLogin.Set_Total_pay(tbLogin.m_nTotal_pay + udwPay);
         if (udwPay > tbLogin.m_nMax_pay)
         {
@@ -430,44 +457,14 @@ TINT32 CProcessAccount::ProcessCmd_GemRecharge(SSession *pstSession, TBOOL &bNee
         pstSession->m_ucFakeRecharge = FALSE;
 
         //更新玩家的购买力标记
-        TUINT32 udwAbility = GetPurchaseAbility(udwRechargeGem);
+        TUINT32 udwAbility = CCommonLogic::GetPurchaseAbility(udwRechargeGem);
         if(udwAbility > tbLogin.m_nAbility)
         {
             tbLogin.Set_Ability(udwAbility);
         }
 
         //event add gem
-        //CActivitesLogic::ComputeBuyGemScore(pstUserInfo, udwRechargeGem);
         CActivitesLogic::ComputeBuyIapScore(pstUserInfo, udwPayCent);
-
-        // 生成一条iap gift记录(100gem不给联盟gift)
-        /* hu不发联盟礼物
-        if(tbPlayer.m_nAlid > 0 && tbPlayer.m_nAlpos > EN_ALLIANCE_POS__REQUEST && 100 != udwRechargeGem)
-        {
-            assert(pstUserInfo->m_stAlGifts.m_dwGiftNum < MAX_AL_IAP_GIFT_NUM * 2 + 10);
-            TINT32 dwRetCode = CCommonLogic::GenIapAlGift(&pstSession->m_stUserInfo.m_tbAlliance, udwRechargeGem,
-                tbLogin.m_nUid, pstUserInfo->m_stAlGifts, &pstSession->m_stUserInfo.m_tbLogin);
-            if(dwRetCode != 0)
-            {
-                TSE_LOG_DEBUG(CGameInfo::GetInstance()->m_poLog, ("ProcessCmd_GemRecharge: gen iap al_gift error[retcode=%d] [seq=%u]",
-                    dwRetCode, pstSession->m_udwSeqNo));
-            }
-            else
-            {
-                TSE_LOG_DEBUG(CGameInfo::GetInstance()->m_poLog, ("ProcessCmd_GemRecharge: gen iap al_gift ok. gem=%u, gift_lv=%d, gift_id=%Ld [seq=%u]",
-                    udwRechargeGem, CCommonBase::GetAlGiftLevel(&pstSession->m_stUserInfo.m_tbAlliance), 
-                    pstUserInfo->m_stAlGifts.m_atbGifts[0].Get_Pack_id(), pstSession->m_udwSeqNo));
-            }
-//             SNoticInfo stNoticInfo;
-//             stNoticInfo.Reset();
-//             stNoticInfo.SetValue(EN_NOTI_ID__AL_GIFT,
-//                 "", "",
-//                 0, 0,
-//                 0, 0,
-//                 0, "", 0);
-//             CMsgBase::SendNotificationAlliance(CConfBase::GetString("project"), pstSession->m_stReqParam.m_udwSvrId, tbPlayer.m_nUid, tbPlayer.m_nAlid / PLAYER_ALLIANCE_ID_OFFSET, stNoticInfo);
-        }
-        */
     }
 
     if(EN_COMMAND_STEP__5 == pstSession->m_udwCommandStep)
@@ -590,78 +587,4 @@ TINT32 CProcessAccount::AddPromoteReward(SSession *pstSession, const Json::Value
         return dwRetCode;
     }
     return 0;
-}
-
-TUINT32 CProcessAccount::GetPurchaseAbility(TUINT32 udwGemNum)
-{
-    TUINT32 udwAbility = EN_PURCHASE_ABILITY__LV0;
-    if(udwGemNum >= 500)
-    {
-        udwAbility = EN_PURCHASE_ABILITY__LV1;
-    }
-    if(udwGemNum >= 7500)
-    {
-        udwAbility = EN_PURCHASE_ABILITY__LV2;
-    }
-    if (udwGemNum >= 18000)
-    {
-        udwAbility = EN_PURCHASE_ABILITY__LV3;
-    }
-    return udwAbility;
-}
-
-TUINT32 CProcessAccount::GetIapPay(string strItemId)
-{
-    TUINT32 udwPay = 0;
-
-    if (strcmp(strItemId.c_str(), "50gems9") == 0)
-    {
-        udwPay = 5;
-    }
-    else if (strcmp(strItemId.c_str(), "100gems9") == 0)
-    {
-        udwPay = 10;
-    }
-    else if (strcmp(strItemId.c_str(), "240gems9") == 0)
-    {
-        udwPay = 20;
-    }
-    else if (strcmp(strItemId.c_str(), "665gems9") == 0)
-    {
-        udwPay = 50;
-    }
-    else if (strcmp(strItemId.c_str(), "1600gems9") == 0)
-    {
-        udwPay = 100;
-    }
-
-    return udwPay;
-}
-
-TUINT32 CProcessAccount::GetIapPayCent(string strItemId)
-{
-    TUINT32 udwPay = 0;
-
-    if (strcmp(strItemId.c_str(), "50gems9") == 0)
-    {
-        udwPay = 499;
-    }
-    else if (strcmp(strItemId.c_str(), "100gems9") == 0)
-    {
-        udwPay = 999;
-    }
-    else if (strcmp(strItemId.c_str(), "240gems9") == 0)
-    {
-        udwPay = 1999;
-    }
-    else if (strcmp(strItemId.c_str(), "665gems9") == 0)
-    {
-        udwPay = 4999;
-    }
-    else if (strcmp(strItemId.c_str(), "1600gems9") == 0)
-    {
-        udwPay = 9999;
-    }
-
-    return udwPay;
 }

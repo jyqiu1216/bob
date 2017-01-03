@@ -166,10 +166,20 @@ TVOID CCommJson::GenAlGiftJson(SUserInfo *pstUser, Json::Value& rJson)
     rJson["al_gift_list"] = Json::Value(Json::arrayValue);
     TUINT32 udwCount = 0;
     TINT32 dwStatus = 0;
+    set<TINT64> setClearAlGift;
+    for (TUINT32 udwIdx = 0; udwIdx < pstUser->m_tbClearAlGift.m_bClear_al_gift.m_udwNum; udwIdx++)
+    {
+        setClearAlGift.insert(pstUser->m_tbClearAlGift.m_bClear_al_gift[udwIdx]);
+    }
     for(TINT32 dwIdx = 0; dwIdx < pstAlGifts->m_dwGiftNum && dwIdx < MAX_AL_IAP_GIFT_NUM; ++dwIdx)
     {
         TbAl_gift* ptbAlGift = &((*pstAlGifts)[dwIdx]);
         TbAl_gift_reward *ptbAlGiftReward = NULL;
+
+        if (setClearAlGift.count(ptbAlGift->m_nId))
+        {
+            continue;
+        }
 
         for(TUINT32 udwIdx = 0; udwIdx < pstUser->m_udwAlGiftRewardNum; udwIdx++)
         {
@@ -478,8 +488,9 @@ TVOID CCommJson::GenPlayerProfileJson(TbPlayer* ptbPlayer, TbEquip *atbEquip, TI
     rJson["al_stat"].append(ptbPlayer->m_nLoy_all - ptbPlayer->m_nLoy_cur);
 
     rJson["vip_point"] = ptbPlayer->m_nVip_point;
-    rJson["vip_level"] = CPlayerBase::GetRawVipLevel(ptbPlayer->m_nVip_point);
+    rJson["vip_level"] = CPlayerBase::GetRawVipLevel(ptbPlayer, ptbPlayer->m_nVip_point);
     rJson["vip_etime"] = ptbPlayer->m_nVip_etime;
+    rJson["vip_stage"] = ptbPlayer->m_nVip_stage;
 
     rJson["avatar"] = ptbPlayer->m_nAvatar;
 
@@ -1441,12 +1452,22 @@ TVOID CCommJson::GenMarchInfo(TbMarch_action* ptbMarch, Json::Value& rjson)
         rjson["param"]["dragon_attack"].append(ptbMarch->m_bMonster_info[0].ddwHpLose);
         rjson["param"]["dragon_attack"].append(ptbMarch->m_bMonster_info[0].ddwExpGet);
         Json::Value jReward = Json::Value(Json::arrayValue);
+        TUINT32 udwJsonIdx = 0;
         for (TUINT32 udwIdx = 0; udwIdx < ptbMarch->m_bReward[0].ddwTotalNum; udwIdx++)
         {
-            jReward[udwIdx] = Json::Value(Json::arrayValue);
-            jReward[udwIdx].append(ptbMarch->m_bReward[0].aRewardList[udwIdx].ddwType);
-            jReward[udwIdx].append(ptbMarch->m_bReward[0].aRewardList[udwIdx].ddwId);
-            jReward[udwIdx].append(ptbMarch->m_bReward[0].aRewardList[udwIdx].ddwNum);
+            jReward[udwJsonIdx] = Json::Value(Json::arrayValue);
+            jReward[udwJsonIdx].append(ptbMarch->m_bReward[0].aRewardList[udwIdx].ddwType);
+            jReward[udwJsonIdx].append(ptbMarch->m_bReward[0].aRewardList[udwIdx].ddwId);
+            jReward[udwJsonIdx].append(ptbMarch->m_bReward[0].aRewardList[udwIdx].ddwNum);
+            udwJsonIdx++;
+        }
+        for (TUINT32 udwIdx = 0; udwIdx < ptbMarch->m_bEx_reward.m_udwNum; udwIdx++)
+        {
+            jReward[udwJsonIdx] = Json::Value(Json::arrayValue);
+            jReward[udwJsonIdx].append(ptbMarch->m_bEx_reward[udwIdx].ddwType);
+            jReward[udwJsonIdx].append(ptbMarch->m_bEx_reward[udwIdx].ddwId);
+            jReward[udwJsonIdx].append(ptbMarch->m_bEx_reward[udwIdx].ddwNum);
+            udwJsonIdx++;
         }
         rjson["param"]["dragon_attack"].append(jReward);
     }
@@ -1663,26 +1684,15 @@ TVOID CCommJson::GenMapBaseJson(TbMap* ptbMap, Json::Value& rJson)
     TUINT32 udwCurtime = CTimeUtils::GetUnixTime();
     TINT64 ddwPeatimeEnd = ptbMap->m_nTime_end;
 
-    //TODO
-    if(ddwStatus & EN_CITY_STATUS__AVOID_WAR)
+    if((ddwStatus & EN_CITY_STATUS__AVOID_WAR)
+        && ptbMap->m_nType != EN_WILD_TYPE__IDOL
+        && ptbMap->m_nType != EN_WILD_TYPE__THRONE_NEW)
     {
-        if(ptbMap->m_nType == EN_WILD_TYPE_PROVINCE
-        || ptbMap->m_nType == EN_WILD_TYPE_THRONE)
+        if (ptbMap->m_nTime_end < udwCurtime)
         {
-            if(ptbMap->m_nMarch_status_time < udwCurtime)
-            {
-                ddwStatus &= (~EN_CITY_STATUS__AVOID_WAR);
-            }
-            ddwPeatimeEnd = ptbMap->m_nMarch_status_time;
+            ddwStatus &= (~EN_CITY_STATUS__AVOID_WAR);
         }
-        else
-        {
-            if(ptbMap->m_nTime_end < udwCurtime)
-            {
-                ddwStatus &= (~EN_CITY_STATUS__AVOID_WAR);
-            }
-            ddwPeatimeEnd = ptbMap->m_nTime_end;
-        }
+        ddwPeatimeEnd = ptbMap->m_nTime_end;
     }
 
     rJson = Json::Value(Json::arrayValue);
@@ -1804,10 +1814,10 @@ TVOID CCommJson::GenEventTipsJson(SUserInfo* pstUserInfo, Json::Value& rjsonResu
     return;
     }
     */
-    if (udwCastle < 3)
-    {
-        return;
-    }
+    //if (udwCastle < 3)
+    //{
+    //    return;
+    //}
 
     Json::Value &jEventRewardWindow = rjsonResult["svr_event_reward_window"];
     jEventRewardWindow = Json::Value(Json::arrayValue);

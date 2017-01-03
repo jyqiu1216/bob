@@ -81,6 +81,7 @@ TINT32 CSendMessageBase::AddAlTips(SUserInfo *pstUser, TUINT8 ucType, TINT64 ddw
     return 0;
 }
 
+/*
 TINT32 CSendMessageBase::AddAlEventTips(SUserInfo *pstUser,TINT64 ddwAid, TUINT32 udwEventType,
     TUINT32 udwRewardType, TUINT32 udwGoalorRank, TUINT32 udwScoreGet, string sScoreList, SGlobalRes *pstReward,string sEventInfo)
 {
@@ -164,7 +165,7 @@ TINT32 CSendMessageBase::AddAlEventTips(SUserInfo *pstUser,TINT64 ddwAid, TUINT3
 
     return 0;
 }
-
+*/
 
 TINT32 CSendMessageBase::AddEventTips(SUserInfo *pstUser,TUINT32 udwEventType,TUINT32 udwRewardType,TUINT32 udwGoalorRank,
     TUINT32 udwScoreGet, string sScoreList, SOneGlobalRes *astRewardList, TUINT32 udwRewardNum, string sEventInfo,

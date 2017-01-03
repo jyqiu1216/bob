@@ -128,6 +128,8 @@ public:
 
     //设置vip等级
     static TINT32 Processcmd_SetVipLevel(SSession* pstSession, TBOOL &bNeedResponse);
+    //设置vip点数
+    static TINT32 Processcmd_SetVipPoint(SSession* pstSession, TBOOL &bNeedResponse);
 
     //设置vip剩余时间
     static TINT32 Processcmd_SetVipLeftTime(SSession* pstSession, TBOOL &bNeedResponse);
@@ -291,6 +293,8 @@ public:
     static TINT32 Processcmd_SetThroneTimeNew(SSession* pstSession, TBOOL& bNeedResponse);
 
     static TINT32 Processcmd_GenPeaceTime(SSession* pstSession, TBOOL& bNeedResponse);
+
+    static TINT32 Processcmd_SetIapPromoteNum(SSession* pstSession, TBOOL& bNeedResponse);
 };
 
 #endif

@@ -2839,6 +2839,8 @@ TINT32 CProcessMarch::ProcessCmd_ThroneDismissAll(SSession *pstSession, TBOOL &b
             pstUser->m_aucMarchFlag[udwIdx] = EN_TABLE_UPDT_FLAG__CHANGE;
         }
     }
+
+    CSendMessageBase::AddTips(pstUser, EN_TIPS_TYPE__THRONE_DISMISS_ALL, pstUser->m_tbPlayer.m_nUid, FALSE);
     
     pstSession->m_udwCommandStep = EN_COMMAND_STEP__END;
     return 0;
@@ -2883,6 +2885,8 @@ TINT32 CProcessMarch::ProcessCmd_ThroneRecallKnightDragon(SSession *pstSession, 
         pstUser->m_aucMarchFlag[dwActionIdx] = EN_TABLE_UPDT_FLAG__CHANGE;
     }
 
+    CSendMessageBase::AddTips(pstUser, EN_TIPS_TYPE__THRONE_RECALL, pstUser->m_tbPlayer.m_nUid, FALSE);
+
     pstSession->m_udwCommandStep = EN_COMMAND_STEP__END;
     return 0;
 }
@@ -2925,6 +2929,8 @@ TINT32 CProcessMarch::ProcessCmd_ThroneRecallReinforce(SSession *pstSession, TBO
         }
         pstUser->m_aucMarchFlag[dwActionIdx] = EN_TABLE_UPDT_FLAG__CHANGE;
     }
+
+    CSendMessageBase::AddTips(pstUser, EN_TIPS_TYPE__THRONE_RECALL, pstUser->m_tbPlayer.m_nUid, FALSE);
 
     pstSession->m_udwCommandStep = EN_COMMAND_STEP__END;
     return 0;

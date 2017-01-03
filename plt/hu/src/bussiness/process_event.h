@@ -13,6 +13,7 @@ public:
     static TINT32 ProcessCmd_EventInfoGet(SSession *pstSession, TBOOL& bNeedResponse);
     static TINT32 ProcessCmd_HistoryEventInfoGet(SSession *pstSession, TBOOL& bNeedResponse);
     static TINT32 ProcessCmd_ThemeHistoryEventInfoGet(SSession *pstSession, TBOOL& bNeedResponse);
+    static TINT32 ProcessCmd_SendEventScore(SSession *pstSession, TBOOL& bNeedResponse);
 };
 
 

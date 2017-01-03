@@ -1426,6 +1426,19 @@ AwsMap* TbPlayer::OnUpdateItemReq(
 			}
 			continue;
 		}
+		if (TbPLAYER_FIELD_VIP_STAGE == iter->first)
+		{
+			if(UPDATE_ACTION_TYPE_DELETE == iter->second)
+			{
+				pUpdateItem->AddValue("/AttributeUpdates/vip_stage/Action", "DELETE");
+			}
+			else
+			{
+				pUpdateItem->AddValue("/AttributeUpdates/vip_stage/Value/N", m_nVip_stage);
+				pUpdateItem->AddValue("/AttributeUpdates/vip_stage/Action", UpdateActionType2Str(iter->second));
+			}
+			continue;
+		}
 		assert(0);
 	}
 	if(bUpdateFlag)
@@ -1655,6 +1668,7 @@ AwsMap* TbPlayer::OnWriteItemReq(int dwActionType)
 		}
 		pItem->AddValue("/evil_force_kill/N", m_nEvil_force_kill);
 		pItem->AddValue("/evil_troop_kill/N", m_nEvil_troop_kill);
+		pItem->AddValue("/vip_stage/N", m_nVip_stage);
 	}
 	else if (WRITE_ACTION_TYPE_DELETE == dwActionType)
 	{
@@ -1839,6 +1853,7 @@ void TbPlayer::OnWriteItemReq(AwsMap* pWriteItem, int dwActionType)
 		}
 		pItem->AddValue("/evil_force_kill/N", m_nEvil_force_kill);
 		pItem->AddValue("/evil_troop_kill/N", m_nEvil_troop_kill);
+		pItem->AddValue("/vip_stage/N", m_nVip_stage);
 	}
 	else if (WRITE_ACTION_TYPE_DELETE == dwActionType)
 	{
@@ -2167,6 +2182,7 @@ AwsMap* TbPlayer::OnPutItemReq(
 	}
 	pPutItem->AddValue("/Item/evil_force_kill/N", m_nEvil_force_kill);
 	pPutItem->AddValue("/Item/evil_troop_kill/N", m_nEvil_troop_kill);
+	pPutItem->AddValue("/Item/vip_stage/N", m_nVip_stage);
 	ostringstream oss;
 	for (unsigned int i = 0; i < expected_desc.vecExpectedItem.size(); ++i)
 	{
@@ -2768,6 +2784,11 @@ int TbPlayer::OnResponse(const Json::Value& item)
 		if (vecMembers[i] == "evil_troop_kill")
 		{
 			m_nEvil_troop_kill = strtoll(item["evil_troop_kill"]["N"].asString().c_str(), NULL, 10);
+			continue;
+		}
+		if (vecMembers[i] == "vip_stage")
+		{
+			m_nVip_stage = strtoll(item["vip_stage"]["N"].asString().c_str(), NULL, 10);
 			continue;
 		}
 	}

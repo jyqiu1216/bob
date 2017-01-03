@@ -10,7 +10,7 @@ public:
     virtual ~CMailListJson();
     virtual TVOID GenDataJson(SSession* pstSession, Json::Value& rJson);
 private:
-    TVOID GenMailInfo(SMailEntry* pstMailEntry, TbMail* ptbMail, Json::Value& rjson);
+    TVOID GenMailInfo(SMailEntry* pstMailEntry, TbMail* ptbMail, TUINT32 udwHeadFlag, Json::Value& rjson);
 };
 
 

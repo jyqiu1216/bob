@@ -11,6 +11,7 @@ using namespace std;
 
 
 #define UPDATE_DOCUMENT_ALL_FLAG_FILE ("../data/document_all_flag")
+#define UPDATE_SUB_DOCUMENT_ALL_FLAG_FILE ("../data/sub_document_all_flag")
 
 /*
 #define UPDATE_DOCUMENT_ENGLISH_FLAG_FILE ("../data/document_english_flag")
@@ -41,6 +42,12 @@ using namespace std;
 #define DOCUMENT_RUSSIAN_FILE ("../data/document_russian.json")
 #define DOCUMENT_CHINESE_FILE ("../data/document_chinese.json")
 
+#define SUB_DOCUMENT_ENGLISH_FILE ("../data/sub_document_english.json")
+#define SUB_DOCUMENT_FRENCH_FILE ("../data/sub_document_french.json")
+#define SUB_DOCUMENT_GERMAN_FILE ("../data/sub_document_german.json")
+#define SUB_DOCUMENT_SPAIN_FILE ("../data/sub_document_spain.json")
+#define SUB_DOCUMENT_RUSSIAN_FILE ("../data/sub_document_russian.json")
+#define SUB_DOCUMENT_CHINESE_FILE ("../data/sub_document_chinese.json")
 /*
 #define DOCUMENT_ARABIC_FILE ("../data/document_arabic.json.de")
 #define DOCUMENT_PORTUGAL_FILE ("../data/document_portugal.json.de")
@@ -65,7 +72,7 @@ public:
     //static TINT32 Update(CTseLogger *poLog, string strDocumentFileName);
     static TINT32 Update_All(CTseLogger *poLog);
 public:
-	TINT32 Init(CTseLogger *poLog, string strDocumentFileName);
+	TINT32 Init(CTseLogger *poLog, string strDocumentFileName, string strSubDocFileName);
     TINT32 Init_All(CTseLogger *poLog);
 
 public:
@@ -90,6 +97,7 @@ public:
     string GetLanguageId(string strShortLangName, TINT32 dwReqLang);
     
     string GetSvrName(TINT32 dwSvrId);
+    TINT32 LoadSubDoc(CTseLogger *poLog, string strDocumentFileName, string strSubDocFileName);
 };
 
 #endif

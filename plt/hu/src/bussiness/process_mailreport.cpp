@@ -1526,6 +1526,19 @@ TINT32 CProcessMailReport::ProcessCmd_MailRewardCollect(SSession* pstSession, TB
             }
         }
 
+        if (tbMail.m_nMaildocid == EN_MAIL_ID__GIVE_GIFT)
+        {
+            pstSession->m_bPickUpGift = TRUE;
+            pstSession->udwGiftUid = tbMail.m_nSuid;
+            Json::Value jTmp;
+            Json::Reader reader;
+            reader.parse(tbMail.m_sEscs, jTmp);
+            if (jTmp.isArray() && jTmp.size() > 0)
+            {
+                pstSession->udwGiftId = jTmp[0U].asUInt();
+            }
+        }
+
         CGlobalResLogic::AddGlobalRes(&pstSession->m_stUserInfo, pstCity, &(tbMail.m_bReward[0]));
 
         for (TUINT32 udwIdx = 0; udwIdx < tbMail.m_bEx_reward.m_udwNum; udwIdx++)
@@ -1568,10 +1581,516 @@ TINT32 CProcessMailReport::ProcessCmd_MailRewardCollect(SSession* pstSession, TB
             return -3;
         }
 
+        if (pstSession->m_bPickUpGift)
+        {
+            CMsgBase::PickUpGift(pstUser->m_tbPlayer.m_nUid, pstSession->udwGiftUid, pstSession->udwGiftId, ddwTargetMailId);
+        }
+
         pstSession->m_udwCommandStep = EN_COMMAND_STEP__END;
         return 0;
     }
 
+    pstSession->m_udwCommandStep = EN_COMMAND_STEP__END;
+    return 0;
+}
+
+TINT32 CProcessMailReport::ProcessCmd_GiftSend(SSession *pstSession, TBOOL &bNeedResponse)
+{
+    TINT32 dwRetCode = 0;
+
+    TINT32 dwTargetId = atoi(pstSession->m_stReqParam.m_szKey[0]);
+    TINT32 dwGiftId = atoi(pstSession->m_stReqParam.m_szKey[1]);
+    TCHAR *pszContent = pstSession->m_stReqParam.m_szKey[2];
+    TCHAR *pszReward = pstSession->m_stReqParam.m_szKey[3];
+
+    SCityInfo* pstCity = &pstSession->m_stUserInfo.m_stCityInfo;
+    TbPlayer *ptbPlayer = &pstSession->m_stUserInfo.m_tbPlayer;
+
+    // 1. init
+    if (pstSession->m_udwCommandStep == EN_COMMAND_STEP__INIT)
+    {
+        if (dwTargetId <= 0)
+        {
+            pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__REQ_PARAM_ERROR;
+            return -2;
+        }
+
+        pstSession->ResetAwsInfo();
+        CAwsRequest::UserGetByUid(pstSession, dwTargetId);
+
+        // set next procedure
+        pstSession->m_udwCommandStep = EN_COMMAND_STEP__1;
+        pstSession->m_udwExpectProcedure = EN_EXPECT_PROCEDURE__AWS;
+
+        // send request
+        bNeedResponse = TRUE;
+        dwRetCode = CBaseProcedure::SendAwsRequest(pstSession, EN_SERVICE_TYPE_QUERY_DYNAMODB_REQ);
+        if (dwRetCode < 0)
+        {
+            pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__SEND_REQ_FAILED;
+            TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessCmd_GiftSend: send req failed [seq=%u]", pstSession->m_stUserInfo.m_udwBSeqNo));
+            return -5;
+        }
+        return 0;
+    }
+
+    // 3. 解析响应
+    if (pstSession->m_udwCommandStep == EN_COMMAND_STEP__1)
+    {
+        pstSession->m_udwMailRUidNum = 0;
+        dwRetCode = CAwsResponse::OnGetItemRsp(*pstSession->m_vecAwsRsp[0], &pstSession->m_tbTmpPlayer);
+        if (dwRetCode > 0 && pstSession->m_tbTmpPlayer.m_nUid == dwTargetId)
+        {
+            pstSession->m_audwMailRUidList[pstSession->m_udwMailRUidNum++] = pstSession->m_tbTmpPlayer.m_nUid;
+        }
+        if (pstSession->m_udwMailRUidNum == 0)
+        {
+            pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__MAIL_RECEIVER_INVALID;
+            TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessCmd_GiftSend: no such user[uid=%d] [seq=%u]",
+                dwTargetId, pstSession->m_stUserInfo.m_udwBSeqNo));
+            return -1;
+        }
+        pstSession->m_dwMailReceiverId = pstSession->m_audwMailRUidList[0];
+
+        // set next procedure
+        pstSession->m_udwCommandStep = EN_COMMAND_STEP__2;
+    }
+
+    // 4. 获取mailid——发送请求
+    if (pstSession->m_udwCommandStep == EN_COMMAND_STEP__2)
+    {
+        // set next procedure
+        pstSession->m_udwCommandStep = EN_COMMAND_STEP__3;
+        pstSession->m_udwExpectProcedure = EN_EXPECT_PROCEDURE__AWS;
+
+        // set package
+        pstSession->ResetAwsInfo();
+        CAwsRequest::GetGlobalNewId(pstSession, EN_GLOBAL_PARAM__MAIL_ID);
+
+        // send request
+        bNeedResponse = TRUE;
+        dwRetCode = CBaseProcedure::SendAwsRequest(pstSession, EN_SERVICE_TYPE_QUERY_DYNAMODB_REQ);
+        if (dwRetCode < 0)
+        {
+            pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__SEND_REQ_FAILED;
+            TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessCmd_GiftSend: send req failed [seq=%u]", pstSession->m_stUserInfo.m_udwBSeqNo));
+            return -8;
+        }
+        return 0;
+    }
+
+    // 5. 获取mailid——解析结果
+    if (pstSession->m_udwCommandStep == EN_COMMAND_STEP__3)
+    {
+        // set next procedure
+        pstSession->m_udwCommandStep = EN_COMMAND_STEP__4;
+
+        // parse data
+        TbParam tbParamRes;
+        for (TUINT32 udwIdx = 0; udwIdx < pstSession->m_vecAwsRsp.size(); ++udwIdx)
+        {
+            AwsRspInfo *pstAwsRspInfo = pstSession->m_vecAwsRsp[udwIdx];
+            string strTableRawName = CCommonFunc::GetTableRawName(pstAwsRspInfo->sTableName);
+            if (strTableRawName == EN_AWS_TABLE_PARAM)
+            {
+                CAwsResponse::OnUpdateItemRsp(*pstAwsRspInfo, &tbParamRes);
+                break;
+            }
+        }
+        if (tbParamRes.m_nVal == 0)
+        {
+            pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__PARSE_PACKAGE_ERR;
+            TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessCmd_GiftSend: get mail id failed [seq=%u]", pstSession->m_stUserInfo.m_udwBSeqNo));
+            return -9;
+        }
+        pstSession->m_ddwNewMailId = tbParamRes.m_nVal;
+    }
+
+    // 6. 邮件发送, 并更新统计信息
+    if (pstSession->m_udwCommandStep == EN_COMMAND_STEP__4)
+    {
+        pstSession->ResetAwsInfo();
+
+        Json::Reader reader;
+        Json::Value jContent;
+        TINT32 dwRawLangId = -1;
+        TBOOL bHasContent = FALSE;
+        if (TRUE == reader.parse(pszContent, jContent))
+        {
+            bHasContent = TRUE;
+            dwRawLangId = jContent["raw_lang"].asInt();
+        }
+
+        TbMail tbMail;
+        tbMail.Set_Id(pstSession->m_ddwNewMailId);
+        tbMail.Set_Time(CTimeUtils::GetUnixTime());
+        tbMail.Set_Suid(pstSession->m_stReqParam.m_udwUserId);
+        tbMail.Set_Sender(pstSession->m_stUserInfo.m_tbPlayer.m_sUin);
+        tbMail.Set_Scid(pstSession->m_stReqParam.m_udwCityId);
+        tbMail.Set_Send_type(EN_MAIL_SEND_TYPE_PLAYER_TO_PLAYERS);
+        tbMail.Set_Maildocid(EN_MAIL_ID__GIVE_GIFT);
+        ostringstream oss;
+        oss << "[" << dwGiftId << "]";
+        tbMail.Set_Escs(oss.str());
+        if (bHasContent)
+        {
+            tbMail.Set_Content(jContent["raw_content"].asString());
+        }
+        tbMail.Set_Sender_player_avatar(pstSession->m_stUserInfo.m_tbPlayer.m_nAvatar);
+        tbMail.Set_Sender_al_nick(pstSession->m_stUserInfo.m_tbAlliance.m_sAl_nick_name);
+        tbMail.Set_Raw_lang(dwRawLangId);
+        if (bHasContent && !jContent["translate_info"].empty())
+        {
+            Json::FastWriter writer;
+            writer.omitEndingLineFeed();
+            tbMail.Set_Translate_content(writer.write(jContent["translate_info"]));
+        }
+
+        tbMail.Set_Display_type(EN_MAIL_DISPLAY_TYPE_NORMAL);
+        tbMail.Set_Ruid(pstSession->m_dwMailReceiverId);
+
+        Json::Value jsonReward;
+        TBOOL bHasReward = FALSE;
+        if (reader.parse(pszReward, jsonReward) == TRUE)
+        {
+            for (TUINT32 udwIdx = 0; udwIdx < jsonReward.size(); ++udwIdx)
+            {
+                if (tbMail.m_bEx_reward.m_udwNum >= TBMAIL_EX_REWARD_MAX_NUM)
+                {
+                    break;
+                }
+
+                tbMail.m_bEx_reward[tbMail.m_bEx_reward.m_udwNum++].SetValue(
+                    jsonReward[udwIdx][0U].asUInt(),
+                    jsonReward[udwIdx][1U].asUInt(),
+                    jsonReward[udwIdx][2U].asUInt());
+                tbMail.SetFlag(TbMAIL_FIELD_EX_REWARD);
+                bHasReward = TRUE;
+            }
+        }
+
+        // set data package - mail
+        pstSession->m_stUserInfo.m_tbUserStat.Set_Newest_mailid(pstSession->m_ddwNewMailId);
+        CAwsRequest::UpdateItem(pstSession, &tbMail);
+
+        TbMail_user astMailUserItem[2];
+        TUINT32 udwMailUserNum = 0;
+        
+        astMailUserItem[udwMailUserNum].Reset();
+        astMailUserItem[udwMailUserNum].Set_Uid(pstSession->m_stUserInfo.m_tbPlayer.m_nUid);
+        astMailUserItem[udwMailUserNum].Set_Mid(pstSession->m_ddwNewMailId);
+        astMailUserItem[udwMailUserNum].Set_Suid(pstSession->m_stUserInfo.m_tbPlayer.m_nUid);
+        astMailUserItem[udwMailUserNum].Set_Time(tbMail.m_nTime);
+        astMailUserItem[udwMailUserNum].Set_Tuid(pstSession->m_dwMailReceiverId);
+        astMailUserItem[udwMailUserNum].Set_Display_type(EN_MAIL_DISPLAY_TYPE_NORMAL);
+        astMailUserItem[udwMailUserNum].Set_Status(EN_MAIL_STATUS_READ);
+        astMailUserItem[udwMailUserNum].Set_Has_reward(bHasReward);
+        astMailUserItem[udwMailUserNum].Set_Receiver_avatar(pstSession->m_tbTmpPlayer.m_nAvatar);
+        astMailUserItem[udwMailUserNum].Set_Receiver_name(pstSession->m_tbTmpPlayer.m_sUin);
+        astMailUserItem[udwMailUserNum].Set_Receiver_alnick(pstSession->m_tbTmpPlayer.m_sAl_nick_name);
+        udwMailUserNum++;
+
+        astMailUserItem[udwMailUserNum].Reset();
+        astMailUserItem[udwMailUserNum].Set_Uid(pstSession->m_dwMailReceiverId);
+        astMailUserItem[udwMailUserNum].Set_Mid(pstSession->m_ddwNewMailId);
+        astMailUserItem[udwMailUserNum].Set_Suid(pstSession->m_stUserInfo.m_tbPlayer.m_nUid);
+        astMailUserItem[udwMailUserNum].Set_Time(tbMail.m_nTime);
+        astMailUserItem[udwMailUserNum].Set_Tuid(pstSession->m_dwMailReceiverId);
+        astMailUserItem[udwMailUserNum].Set_Display_type(EN_MAIL_DISPLAY_TYPE_NORMAL);
+        astMailUserItem[udwMailUserNum].Set_Has_reward(bHasReward);
+        astMailUserItem[udwMailUserNum].Set_Receiver_avatar(pstSession->m_tbTmpPlayer.m_nAvatar);
+        astMailUserItem[udwMailUserNum].Set_Receiver_name(pstSession->m_tbTmpPlayer.m_sUin);
+        astMailUserItem[udwMailUserNum].Set_Receiver_alnick(pstSession->m_tbTmpPlayer.m_sAl_nick_name);
+        udwMailUserNum++;
+
+        pstSession->ResetReportInfo();
+        CReportSvrRequest::MailUserPut(pstSession, astMailUserItem, udwMailUserNum);
+
+        // send request
+        pstSession->m_udwCommandStep = EN_COMMAND_STEP__5;
+        pstSession->m_udwExpectProcedure = EN_EXPECT_PROCEDURE__AWS;
+        bNeedResponse = TRUE;
+        dwRetCode = CBaseProcedure::SendAwsRequest(pstSession, EN_SERVICE_TYPE_QUERY_DYNAMODB_REQ);
+        if (dwRetCode < 0)
+        {
+            pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__SEND_REQ_FAILED;
+            TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessCmd_GiftSend: insert mail or update stat failed [seq=%u]", pstSession->m_stUserInfo.m_udwBSeqNo));
+            return -10;
+        }
+        return 0;
+    }
+
+    if (pstSession->m_udwCommandStep == EN_COMMAND_STEP__5)
+    {
+        pstSession->m_udwCommandStep = EN_COMMAND_STEP__6;
+        // send request
+        pstSession->m_udwExpectProcedure = EN_EXPECT_PROCEDURE__REPORT_SVR;
+
+        bNeedResponse = TRUE;
+        dwRetCode = CBaseProcedure::SendReportSvrRequest(pstSession);
+        if (dwRetCode < 0)
+        {
+            pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__SEND_REQ_FAILED;
+            TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessCmd_GiftSend: insert mail or update stat failed [seq=%u]", pstSession->m_stUserInfo.m_udwBSeqNo));
+            return -11;
+        }
+        return 0;
+    }
+
+    if (pstSession->m_udwCommandStep == EN_COMMAND_STEP__6)
+    {
+        //wave@push_data
+        CPushDataBasic::PushDataUid_Refresh(pstSession, ptbPlayer->m_nUid);
+        if (pstSession->m_dwMailReceiverId)
+        {
+            CPushDataBasic::PushDataUid_Refresh(pstSession, pstSession->m_dwMailReceiverId);
+        }
+
+        // set next procedure
+        pstSession->m_udwCommandStep = EN_COMMAND_STEP__END;
+        return 0;
+    }
+
+    // set next procedure
+    pstSession->m_udwCommandStep = EN_COMMAND_STEP__END;
+    return 0;
+}
+
+TINT32 CProcessMailReport::ProcessCmd_GiftPickUp(SSession *pstSession, TBOOL &bNeedResponse)
+{
+    TINT32 dwRetCode = 0;
+
+    TUINT32 udwTargetId = atoi(pstSession->m_stReqParam.m_szKey[0]);
+    TUINT32 udwGiftId = atoi(pstSession->m_stReqParam.m_szKey[1]);
+    TINT64 ddwMailId = strtoll(pstSession->m_stReqParam.m_szKey[2], NULL, 10);
+
+    SCityInfo* pstCity = &pstSession->m_stUserInfo.m_stCityInfo;
+    TbPlayer *ptbPlayer = &pstSession->m_stUserInfo.m_tbPlayer;
+
+    // 1. init
+    if (pstSession->m_udwCommandStep == EN_COMMAND_STEP__INIT)
+    {
+        if (udwTargetId == 0)
+        {
+            pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__REQ_PARAM_ERROR;
+            return -2;
+        }
+
+        pstSession->ResetAwsInfo();
+        CAwsRequest::UserGetByUid(pstSession, udwTargetId);
+        CAwsRequest::UserStatGet(pstSession, udwTargetId);
+
+        // set next procedure
+        pstSession->m_udwCommandStep = EN_COMMAND_STEP__1;
+        pstSession->m_udwExpectProcedure = EN_EXPECT_PROCEDURE__AWS;
+
+        // send request
+        bNeedResponse = TRUE;
+        dwRetCode = CBaseProcedure::SendAwsRequest(pstSession, EN_SERVICE_TYPE_QUERY_DYNAMODB_REQ);
+        if (dwRetCode < 0)
+        {
+            pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__SEND_REQ_FAILED;
+            TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessCmd_GiftSend: send req failed [seq=%u]", pstSession->m_stUserInfo.m_udwBSeqNo));
+            return -5;
+        }
+        return 0;
+    }
+
+    // 3. 解析响应
+    if (pstSession->m_udwCommandStep == EN_COMMAND_STEP__1)
+    {
+        pstSession->m_udwMailRUidNum = 0;
+        pstSession->m_tbTmpPlayer.Reset();
+        pstSession->m_tbTmpUserStat.Reset();
+        for (TUINT32 udwIdx = 0; udwIdx < pstSession->m_vecAwsRsp.size(); udwIdx++)
+        {
+            AwsRspInfo *pstAwsRspInfo = pstSession->m_vecAwsRsp[udwIdx];
+            string strTableRawName = CCommonFunc::GetTableRawName(pstAwsRspInfo->sTableName);
+            if (strTableRawName == EN_AWS_TABLE_PLAYER)
+            {
+                CAwsResponse::OnGetItemRsp(*pstAwsRspInfo, &pstSession->m_tbTmpPlayer);
+                continue;
+            }
+            if (strTableRawName == EN_AWS_TABLE_USER_STAT)
+            {
+                CAwsResponse::OnGetItemRsp(*pstAwsRspInfo, &pstSession->m_tbTmpUserStat);
+                continue;
+            }
+        }
+        if (pstSession->m_tbTmpPlayer.m_nUid == udwTargetId
+            && pstSession->m_tbTmpUserStat.m_nUid == udwTargetId)
+        {
+            pstSession->m_audwMailRUidList[pstSession->m_udwMailRUidNum++] = pstSession->m_tbTmpPlayer.m_nUid;
+        }
+        if (pstSession->m_udwMailRUidNum == 0)
+        {
+            pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__MAIL_RECEIVER_INVALID;
+            TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessCmd_GiftSend: no such user[uid=%d] [seq=%u]",
+                udwTargetId, pstSession->m_stUserInfo.m_udwBSeqNo));
+            return -1;
+        }
+        pstSession->m_dwMailReceiverId = pstSession->m_audwMailRUidList[0];
+
+        // set next procedure
+        pstSession->m_udwCommandStep = EN_COMMAND_STEP__2;
+    }
+
+    // 4. 获取mailid——发送请求
+    if (pstSession->m_udwCommandStep == EN_COMMAND_STEP__2)
+    {
+        // set next procedure
+        pstSession->m_udwCommandStep = EN_COMMAND_STEP__3;
+        pstSession->m_udwExpectProcedure = EN_EXPECT_PROCEDURE__AWS;
+
+        // set package
+        pstSession->ResetAwsInfo();
+        CAwsRequest::GetGlobalNewId(pstSession, EN_GLOBAL_PARAM__MAIL_ID);
+
+        // send request
+        bNeedResponse = TRUE;
+        dwRetCode = CBaseProcedure::SendAwsRequest(pstSession, EN_SERVICE_TYPE_QUERY_DYNAMODB_REQ);
+        if (dwRetCode < 0)
+        {
+            pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__SEND_REQ_FAILED;
+            TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessCmd_GiftSend: send req failed [seq=%u]", pstSession->m_stUserInfo.m_udwBSeqNo));
+            return -8;
+        }
+        return 0;
+    }
+
+    // 5. 获取mailid——解析结果
+    if (pstSession->m_udwCommandStep == EN_COMMAND_STEP__3)
+    {
+        // set next procedure
+        pstSession->m_udwCommandStep = EN_COMMAND_STEP__4;
+
+        // parse data
+        TbParam tbParamRes;
+        for (TUINT32 udwIdx = 0; udwIdx < pstSession->m_vecAwsRsp.size(); ++udwIdx)
+        {
+            AwsRspInfo *pstAwsRspInfo = pstSession->m_vecAwsRsp[udwIdx];
+            string strTableRawName = CCommonFunc::GetTableRawName(pstAwsRspInfo->sTableName);
+            if (strTableRawName == EN_AWS_TABLE_PARAM)
+            {
+                CAwsResponse::OnUpdateItemRsp(*pstAwsRspInfo, &tbParamRes);
+                break;
+            }
+        }
+        if (tbParamRes.m_nVal == 0)
+        {
+            pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__PARSE_PACKAGE_ERR;
+            TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessCmd_GiftSend: get mail id failed [seq=%u]", pstSession->m_stUserInfo.m_udwBSeqNo));
+            return -9;
+        }
+        pstSession->m_ddwNewMailId = tbParamRes.m_nVal;
+    }
+
+    // 6. 邮件发送, 并更新统计信息
+    if (pstSession->m_udwCommandStep == EN_COMMAND_STEP__4)
+    {
+        pstSession->ResetAwsInfo();
+
+        TbMail tbMail;
+        tbMail.Set_Id(pstSession->m_ddwNewMailId);
+        tbMail.Set_Time(CTimeUtils::GetUnixTime());
+        tbMail.Set_Suid(pstSession->m_stReqParam.m_udwUserId);
+        tbMail.Set_Sender(pstSession->m_stUserInfo.m_tbPlayer.m_sUin);
+        tbMail.Set_Scid(pstSession->m_stReqParam.m_udwCityId);
+        tbMail.Set_Send_type(EN_MAIL_SEND_TYPE_PLAYER_TO_PLAYERS);
+        tbMail.Set_Maildocid(EN_MAIL_ID__PICK_UP_GIFT);
+        ostringstream oss;
+        oss << "[" << udwGiftId << "," << ddwMailId << "]";
+        tbMail.Set_Escs(oss.str());
+
+        tbMail.Set_Sender_player_avatar(pstSession->m_stUserInfo.m_tbPlayer.m_nAvatar);
+        tbMail.Set_Sender_al_nick(pstSession->m_stUserInfo.m_tbAlliance.m_sAl_nick_name);
+        tbMail.Set_Raw_lang(-1);
+
+        tbMail.Set_Display_type(EN_MAIL_DISPLAY_TYPE_NORMAL);
+        tbMail.Set_Ruid(pstSession->m_dwMailReceiverId);
+
+        // set data package - mail
+        pstSession->m_stUserInfo.m_tbUserStat.Set_Newest_mailid(pstSession->m_ddwNewMailId);
+        CAwsRequest::UpdateItem(pstSession, &tbMail);
+
+        TbMail_user astMailUserItem[2];
+        TUINT32 udwMailUserNum = 0;
+
+        astMailUserItem[udwMailUserNum].Reset();
+        astMailUserItem[udwMailUserNum].Set_Uid(pstSession->m_stUserInfo.m_tbPlayer.m_nUid);
+        astMailUserItem[udwMailUserNum].Set_Mid(pstSession->m_ddwNewMailId);
+        astMailUserItem[udwMailUserNum].Set_Suid(pstSession->m_stUserInfo.m_tbPlayer.m_nUid);
+        astMailUserItem[udwMailUserNum].Set_Time(tbMail.m_nTime);
+        astMailUserItem[udwMailUserNum].Set_Tuid(pstSession->m_dwMailReceiverId);
+        astMailUserItem[udwMailUserNum].Set_Display_type(EN_MAIL_DISPLAY_TYPE_NORMAL);
+        astMailUserItem[udwMailUserNum].Set_Status(EN_MAIL_STATUS_READ);
+        astMailUserItem[udwMailUserNum].Set_Receiver_avatar(pstSession->m_tbTmpPlayer.m_nAvatar);
+        astMailUserItem[udwMailUserNum].Set_Receiver_name(pstSession->m_tbTmpPlayer.m_sUin);
+        astMailUserItem[udwMailUserNum].Set_Receiver_alnick(pstSession->m_tbTmpPlayer.m_sAl_nick_name);
+        udwMailUserNum++;
+
+        astMailUserItem[udwMailUserNum].Reset();
+        astMailUserItem[udwMailUserNum].Set_Uid(pstSession->m_dwMailReceiverId);
+        astMailUserItem[udwMailUserNum].Set_Mid(pstSession->m_ddwNewMailId);
+        astMailUserItem[udwMailUserNum].Set_Suid(pstSession->m_stUserInfo.m_tbPlayer.m_nUid);
+        astMailUserItem[udwMailUserNum].Set_Time(tbMail.m_nTime);
+        astMailUserItem[udwMailUserNum].Set_Tuid(pstSession->m_dwMailReceiverId);
+        astMailUserItem[udwMailUserNum].Set_Display_type(EN_MAIL_DISPLAY_TYPE_NORMAL);
+        astMailUserItem[udwMailUserNum].Set_Receiver_avatar(pstSession->m_tbTmpPlayer.m_nAvatar);
+        astMailUserItem[udwMailUserNum].Set_Receiver_name(pstSession->m_tbTmpPlayer.m_sUin);
+        astMailUserItem[udwMailUserNum].Set_Receiver_alnick(pstSession->m_tbTmpPlayer.m_sAl_nick_name);
+        udwMailUserNum++;
+
+        pstSession->ResetReportInfo();
+        CReportSvrRequest::MailUserPut(pstSession, astMailUserItem, udwMailUserNum);
+        CReportSvrRequest::SetMailRewardCollect(pstSession, &pstSession->m_tbTmpPlayer, &pstSession->m_tbTmpUserStat, ddwMailId);
+
+        // send request
+        pstSession->m_udwCommandStep = EN_COMMAND_STEP__5;
+        pstSession->m_udwExpectProcedure = EN_EXPECT_PROCEDURE__AWS;
+        bNeedResponse = TRUE;
+        dwRetCode = CBaseProcedure::SendAwsRequest(pstSession, EN_SERVICE_TYPE_QUERY_DYNAMODB_REQ);
+        if (dwRetCode < 0)
+        {
+            pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__SEND_REQ_FAILED;
+            TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessCmd_GiftSend: insert mail or update stat failed [seq=%u]", pstSession->m_stUserInfo.m_udwBSeqNo));
+            return -10;
+        }
+        return 0;
+    }
+
+    if (pstSession->m_udwCommandStep == EN_COMMAND_STEP__5)
+    {
+        pstSession->m_udwCommandStep = EN_COMMAND_STEP__6;
+        // send request
+        pstSession->m_udwExpectProcedure = EN_EXPECT_PROCEDURE__REPORT_SVR;
+
+        bNeedResponse = TRUE;
+        dwRetCode = CBaseProcedure::SendReportSvrRequest(pstSession);
+        if (dwRetCode < 0)
+        {
+            pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__SEND_REQ_FAILED;
+            TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessCmd_GiftSend: insert mail or update stat failed [seq=%u]", pstSession->m_stUserInfo.m_udwBSeqNo));
+            return -11;
+        }
+        return 0;
+    }
+
+    if (pstSession->m_udwCommandStep == EN_COMMAND_STEP__6)
+    {
+        //wave@push_data
+        CPushDataBasic::PushDataUid_Refresh(pstSession, ptbPlayer->m_nUid);
+        if (pstSession->m_dwMailReceiverId)
+        {
+            CPushDataBasic::PushDataUid_Refresh(pstSession, pstSession->m_dwMailReceiverId);
+        }
+
+        // set next procedure
+        pstSession->m_udwCommandStep = EN_COMMAND_STEP__END;
+        return 0;
+    }
+
+    // set next procedure
     pstSession->m_udwCommandStep = EN_COMMAND_STEP__END;
     return 0;
 }
@@ -2112,6 +2631,10 @@ TINT32 CProcessMailReport::ProcessCmd_OpMailSend(SSession *pstSession, TBOOL &bN
             case EN_MAIL_ID__BE_DUBBED_TITLE:
                 jsonReader.parse(pszExtraContent, jsonEscs);
                 break;
+            case EN_MAIL_ID__EVENT_SEND_SCORE:
+                tbMail.Set_Title(CProcessMailReport::GetMailTitle(pstSession, dwDocId));
+                jsonReader.parse(pszExtraContent, jsonEscs);
+                break;
             default:
                 break;
             }
@@ -2131,16 +2654,16 @@ TINT32 CProcessMailReport::ProcessCmd_OpMailSend(SSession *pstSession, TBOOL &bN
         {
             for(TUINT32 udwIdx = 0; udwIdx < jsonReward.size(); ++udwIdx)
             {
-                if(tbMail.m_bReward[0].ddwTotalNum >= MAX_REWARD_ITEM_NUM)
+                if(tbMail.m_bEx_reward.m_udwNum >= TBMAIL_EX_REWARD_MAX_NUM)
                 {
                     break;
                 }
 
-                tbMail.m_bReward[0].aRewardList[tbMail.m_bReward[0].ddwTotalNum++].SetValue(
+                tbMail.m_bEx_reward[tbMail.m_bEx_reward.m_udwNum++].SetValue(
                     jsonReward[udwIdx][0U].asUInt(),
                     jsonReward[udwIdx][1U].asUInt(),
                     jsonReward[udwIdx][2U].asUInt());
-                tbMail.SetFlag(TbMAIL_FIELD_REWARD);
+                tbMail.SetFlag(TbMAIL_FIELD_EX_REWARD);
                 bHasReward = TRUE;
             }
         }
@@ -2158,16 +2681,16 @@ TINT32 CProcessMailReport::ProcessCmd_OpMailSend(SSession *pstSession, TBOOL &bN
                     //{
                     //    continue;
                     //}
-                    if(tbMail.m_bReward[0].ddwTotalNum >= MAX_REWARD_ITEM_NUM)
+                    if(tbMail.m_bEx_reward.m_udwNum >= TBMAIL_EX_REWARD_MAX_NUM)
                     {
                         break;
                     }
 
-                    tbMail.m_bReward[0].aRewardList[tbMail.m_bReward[0].ddwTotalNum++].SetValue(
+                    tbMail.m_bEx_reward[tbMail.m_bEx_reward.m_udwNum++].SetValue(
                         oMailJson[strMailDocId]["r"]["a1"][udwIdx][0U].asUInt(),
                         oMailJson[strMailDocId]["r"]["a1"][udwIdx][1U].asUInt(),
                         oMailJson[strMailDocId]["r"]["a1"][udwIdx][2U].asUInt());
-                    tbMail.SetFlag(TbMAIL_FIELD_REWARD);
+                    tbMail.SetFlag(TbMAIL_FIELD_EX_REWARD);
                     bHasReward = TRUE;
                 }
             }
@@ -3317,4 +3840,37 @@ string CProcessMailReport::NumToSplitString(TINT64 ddwNum)
     }
 
     return oss.str();
+}
+
+string CProcessMailReport::GetMailTitle(SSession* pstSession, TINT32 dwDocId)
+{
+    string sLang = CDocument::GetLang(pstSession->m_stUserInfo.m_tbLogin.m_nLang);
+    if (sLang == "")
+    {
+        sLang = "english";
+    }
+
+    TBOOL bIsExistDocument = CDocument::GetInstance()->IsSupportLang(sLang);
+    if (FALSE == bIsExistDocument)
+    {
+        TSE_LOG_ERROR(pstSession->m_poServLog, ("SendItemMail: do not have this language[%s] document", sLang.c_str()));
+
+        bIsExistDocument = CDocument::GetInstance()->IsSupportLang("english");
+        if (FALSE == bIsExistDocument)
+        {
+            TSE_LOG_ERROR(pstSession->m_poServLog, ("SendItemMail: do not have english document"));
+            return;
+        }
+        else
+        {
+            sLang = "english";
+        }
+    }
+
+    const Json::Value &stDocumentJson = CDocument::GetInstance()->GetDocumentJsonByLang(sLang);
+
+    string sRankInfo = "";
+    string sItemList = "";
+    string sMailTitle = CMsgBase::GetEventMailTitleByEventId(dwDocId, stDocumentJson);
+    return sMailTitle;
 }

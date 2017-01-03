@@ -214,6 +214,18 @@ class ClientRequest : public ::google::protobuf::Message {
   ::google::protobuf::int64 login_time() const;
   void set_login_time(::google::protobuf::int64 value);
 
+  // optional string cmd = 15;
+  bool has_cmd() const;
+  void clear_cmd();
+  static const int kCmdFieldNumber = 15;
+  const ::std::string& cmd() const;
+  void set_cmd(const ::std::string& value);
+  void set_cmd(const char* value);
+  void set_cmd(const char* value, size_t size);
+  ::std::string* mutable_cmd();
+  ::std::string* release_cmd();
+  void set_allocated_cmd(::std::string* cmd);
+
   // @@protoc_insertion_point(class_scope:client_netio_protocol.ClientRequest)
  private:
   inline void set_has_service_type();
@@ -244,6 +256,8 @@ class ClientRequest : public ::google::protobuf::Message {
   inline void clear_has_did();
   inline void set_has_login_time();
   inline void clear_has_login_time();
+  inline void set_has_cmd();
+  inline void clear_has_cmd();
 
   // helper for ByteSize()
   int RequiredFieldsByteSizeFallback() const;
@@ -264,6 +278,7 @@ class ClientRequest : public ::google::protobuf::Message {
   ::google::protobuf::int32 cid_;
   ::google::protobuf::internal::ArenaStringPtr did_;
   ::google::protobuf::int64 login_time_;
+  ::google::protobuf::internal::ArenaStringPtr cmd_;
   ::google::protobuf::int32 clv_;
   friend void  protobuf_AddDesc_client_5fnetio_2eproto();
   friend void protobuf_AssignDesc_client_5fnetio_2eproto();
@@ -1011,6 +1026,60 @@ inline void ClientRequest::set_login_time(::google::protobuf::int64 value) {
   set_has_login_time();
   login_time_ = value;
   // @@protoc_insertion_point(field_set:client_netio_protocol.ClientRequest.login_time)
+}
+
+// optional string cmd = 15;
+inline bool ClientRequest::has_cmd() const {
+  return (_has_bits_[0] & 0x00004000u) != 0;
+}
+inline void ClientRequest::set_has_cmd() {
+  _has_bits_[0] |= 0x00004000u;
+}
+inline void ClientRequest::clear_has_cmd() {
+  _has_bits_[0] &= ~0x00004000u;
+}
+inline void ClientRequest::clear_cmd() {
+  cmd_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  clear_has_cmd();
+}
+inline const ::std::string& ClientRequest::cmd() const {
+  // @@protoc_insertion_point(field_get:client_netio_protocol.ClientRequest.cmd)
+  return cmd_.GetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+inline void ClientRequest::set_cmd(const ::std::string& value) {
+  set_has_cmd();
+  cmd_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
+  // @@protoc_insertion_point(field_set:client_netio_protocol.ClientRequest.cmd)
+}
+inline void ClientRequest::set_cmd(const char* value) {
+  set_has_cmd();
+  cmd_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
+  // @@protoc_insertion_point(field_set_char:client_netio_protocol.ClientRequest.cmd)
+}
+inline void ClientRequest::set_cmd(const char* value, size_t size) {
+  set_has_cmd();
+  cmd_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
+      ::std::string(reinterpret_cast<const char*>(value), size));
+  // @@protoc_insertion_point(field_set_pointer:client_netio_protocol.ClientRequest.cmd)
+}
+inline ::std::string* ClientRequest::mutable_cmd() {
+  set_has_cmd();
+  // @@protoc_insertion_point(field_mutable:client_netio_protocol.ClientRequest.cmd)
+  return cmd_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+inline ::std::string* ClientRequest::release_cmd() {
+  // @@protoc_insertion_point(field_release:client_netio_protocol.ClientRequest.cmd)
+  clear_has_cmd();
+  return cmd_.ReleaseNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+inline void ClientRequest::set_allocated_cmd(::std::string* cmd) {
+  if (cmd != NULL) {
+    set_has_cmd();
+  } else {
+    clear_has_cmd();
+  }
+  cmd_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), cmd);
+  // @@protoc_insertion_point(field_set_allocated:client_netio_protocol.ClientRequest.cmd)
 }
 
 // -------------------------------------------------------------------

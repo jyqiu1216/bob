@@ -768,6 +768,8 @@ TINT32 CProcessPlayer::ProcessCmd_BuildingUpgrade(SSession *pstSession, TBOOL &b
     TUINT32 udwExp = strtoul(pstSession->m_stReqParam.m_szKey[5], NULL, 10);
     TUINT8 ucIsNeedHelp = atoi(pstSession->m_stReqParam.m_szKey[6]);
 
+    TUINT64 uddwClientAct = strtoull(pstSession->m_stReqParam.m_szKey[7], NULL, 10);
+
     SCityBuildingNode* pstBuildingNode = CCityBase::GetBuildingAtPos(&tbCity, udwPos);
     TUINT8 ucCurLevel = 0;
     if(pstBuildingNode)
@@ -1002,10 +1004,27 @@ TINT32 CProcessPlayer::ProcessCmd_BuildingUpgrade(SSession *pstSession, TBOOL &b
     stParam.m_stBuilding.SetValue(udwPos, ucId, ucTargetLevel, udwExp, (TCHAR*)tbPlayer.m_sUin.c_str());
     if(ucUpgradeType == 0 && udwKey > 1) //耗时小于等于1s的走instant build
     {
+        TUINT64 uddwActionId = 0;
+        //判断客户端的action id
+        if (uddwClientAct != 0)
+        {
+            uddwActionId = uddwClientAct;
+            if (pstUser->m_tbLogin.m_nClient_seq == MAX_CLIENT_SEQ)
+            {
+                pstUser->m_tbLogin.m_nClient_seq = 0;
+            }
+            if (uddwActionId != CToolBase::GetClientBuildTaskId(tbPlayer.m_nUid, pstUser->m_tbLogin.m_nClient_seq))
+            {
+                pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__REQ_PARAM_ERROR;
+                TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessCmd__BuildingUpgrade: item use failed [seq=%u]", pstSession->m_stUserInfo.m_udwBSeqNo));
+                return -13;
+            }
+            pstUser->m_tbLogin.Set_Client_seq(pstUser->m_tbLogin.m_nClient_seq + 1);
+        }
         // 生成主城action
         CActionBase::AddAlAction(pstUser, pstCity, EN_ACTION_MAIN_CLASS__BUILDING,
             EN_ACTION_SEC_CLASS__BUILDING_UPGRADE,
-            EN_BUILDING_STATUS__BUILDDING, udwKey, &stParam);
+            EN_BUILDING_STATUS__BUILDDING, udwKey, &stParam, 0, uddwActionId);
 
         if(ucIsNeedHelp && pstUser->m_tbPlayer.m_nAlpos && pstUser->m_udwActionNum)
         {
@@ -1239,25 +1258,37 @@ TINT32 CProcessPlayer::ProcessCmd_BuildingEdit(SSession* pstSession, TBOOL& bNee
 {
     SUserInfo *pstUser = &pstSession->m_stUserInfo;
     SCityInfo *pstCity = &pstUser->m_stCityInfo;
+    TbCity& tbCity = pstCity->m_stTblData;
+    TbDecoration& tbDecoration = pstUser->m_tbDecoration;
 
+    TINT32 dwRetCode = 0;
     TUINT32 udwCount = 0;
-    TUINT32 audwSrcPos[MAX_BUILDING_NUM_IN_ONE_CITY];
-    TUINT32 audwTarPos[MAX_BUILDING_NUM_IN_ONE_CITY];
-    memset((TVOID*)audwSrcPos, 0, sizeof(TUINT32)*MAX_BUILDING_NUM_IN_ONE_CITY);
-    memset((TVOID*)audwTarPos, 0, sizeof(TUINT32)*MAX_BUILDING_NUM_IN_ONE_CITY);
+    TUINT32 udwDecoCount = 0;
+    TINT32 adwSrcPos[MAX_BUILDING_NUM_IN_ONE_CITY];
+    TINT32 adwTarPos[MAX_BUILDING_NUM_IN_ONE_CITY];
+    memset((TVOID*)adwSrcPos, 0, sizeof(TINT32)*MAX_BUILDING_NUM_IN_ONE_CITY);
+    memset((TVOID*)adwTarPos, 0, sizeof(TINT32)*MAX_BUILDING_NUM_IN_ONE_CITY);
+    TINT32 adwDecoPos[MAX_BUILDING_NUM_IN_ONE_CITY];
+    TINT32 adwDecoId[MAX_BUILDING_NUM_IN_ONE_CITY];
+    string strBuildingId = "";
+    memset((TVOID*)adwDecoPos, 0, sizeof(TINT32)*MAX_BUILDING_NUM_IN_ONE_CITY);
+    memset((TVOID*)adwDecoId, 0, sizeof(TINT32)*MAX_BUILDING_NUM_IN_ONE_CITY);
 
     const TCHAR ucPair = ':';
     const TCHAR ucEntry = ',';
-
+    //key0=src1:tar1,src2:tar2
+    //key1=pos1:id1,pos2:id2
     const TCHAR* pCurPos = pstSession->m_stReqParam.m_szKey[0];
+    const TCHAR* pDecoInfo = pstSession->m_stReqParam.m_szKey[1];
+
     while(pCurPos && *pCurPos)
     {
-        audwSrcPos[udwCount] = atoi(pCurPos);
+        adwSrcPos[udwCount] = atoi(pCurPos);
         pCurPos = strchr(pCurPos, ucPair);
         if(pCurPos != NULL)
         {
             pCurPos++;
-            audwTarPos[udwCount] = atoi(pCurPos);
+            adwTarPos[udwCount] = atoi(pCurPos);
             udwCount++;
             if(udwCount == MAX_BUILDING_NUM_IN_ONE_CITY)
             {
@@ -1275,12 +1306,47 @@ TINT32 CProcessPlayer::ProcessCmd_BuildingEdit(SSession* pstSession, TBOOL& bNee
         }
     }
 
-    if(udwCount == 0)
+    while (pDecoInfo && *pDecoInfo)
     {
-        pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__REQ_PARAM_ERROR;
-        return -2;
+        adwDecoPos[udwDecoCount] = atoi(pDecoInfo);
+        pDecoInfo = strchr(pDecoInfo, ucPair);
+        if (pDecoInfo != NULL)
+        {
+            pDecoInfo++;
+            adwDecoId[udwDecoCount] = atoi(pDecoInfo);
+            udwDecoCount++;
+            if (udwDecoCount == MAX_BUILDING_NUM_IN_ONE_CITY)
+            {
+                break;
+            }
+        }
+        else
+        {
+            break;
+        }
+        pDecoInfo = strchr(pDecoInfo, ucEntry);
+        if (pDecoInfo != NULL)
+        {
+            pDecoInfo++;
+        }
     }
+    //if (udwCount == 0 && udwDecoCount == 0)
+    //{
+    //    pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__REQ_PARAM_ERROR;
+    //    return -2;
+    //}
 
+    //清除building list中的装饰物
+    CGameInfo *pstGameInfo = CGameInfo::GetInstance();
+    Json::Value jTmp = pstGameInfo->m_oJsonRoot["game_building"];
+    for (TUINT32 udwIdx = 0; udwIdx < tbCity.m_bBuilding.m_udwNum; udwIdx++)
+    {
+        strBuildingId = CCommonFunc::NumToString(tbCity.m_bBuilding[udwIdx].m_ddwType);
+        if (jTmp[strBuildingId]["a"]["a12"].asInt() == 2)
+        {   //装饰物
+            CCityBase::DelBuildingAtPos(&tbCity, tbCity.m_bBuilding[udwIdx].m_ddwPos);
+        }
+    }
     pstSession->m_JsonValue = Json::Value(Json::objectValue);
     pstSession->m_JsonValue["building_move"] = Json::Value(Json::arrayValue);
 
@@ -1288,10 +1354,28 @@ TINT32 CProcessPlayer::ProcessCmd_BuildingEdit(SSession* pstSession, TBOOL& bNee
     std::vector<std::pair<TbAlliance_action*, TUINT32> > actionToModify;
     for(TUINT32 udwIdx = 0; udwIdx < udwCount; ++udwIdx)
     {
-        SCityBuildingNode* pstNode = CCityBase::GetBuildingAtPos(&pstCity->m_stTblData, audwSrcPos[udwIdx]);
+        SCityBuildingNode* pstNode = CCityBase::GetBuildingAtPos(&pstCity->m_stTblData, adwSrcPos[udwIdx]);
+        //if (adwTarPos[udwIdx] == -1)    //收起装饰物
+        //{
+        //    dwRetCode = CPlayerBase::PickUpDecoration(&pstUser->m_tbDecoration, pstNode->m_ddwType);
+        //    if (dwRetCode < 0)
+        //    {
+        //        pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__REQ_PARAM_ERROR;
+        //        TSE_LOG_ERROR(pstSession->m_poServLog, ("PickUpDecoration: pick up failed [id=%ld] [seq=%u]", pstNode->m_ddwType, pstSession->m_stUserInfo.m_udwBSeqNo));
+        //        return -5;
+        //    }
+        //    CCityBase::DelBuildingAtPos(&tbCity, pstNode->m_ddwPos);
+        //    continue;
+        //}
+        if (!pstNode || adwTarPos[udwIdx] == -1)
+        {
+            pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__REQ_PARAM_ERROR;
+            return -1;
+        }
+
         if(pstNode != NULL)
         {
-            buildingToMove.push_back(std::make_pair(pstNode, audwTarPos[udwIdx]));
+            buildingToMove.push_back(std::make_pair(pstNode, adwTarPos[udwIdx]));
         }
 
         for(TUINT32 udwActionIdx = 0; udwActionIdx < pstUser->m_udwSelfAlActionNum; ++udwActionIdx)
@@ -1314,11 +1398,11 @@ TINT32 CProcessPlayer::ProcessCmd_BuildingEdit(SSession* pstSession, TBOOL& bNee
             {
                 continue;
             }
-            if(ptbBuildingAction->m_bParam[0].m_stBuilding.m_ddwPos == audwSrcPos[udwIdx])
+            if(ptbBuildingAction->m_bParam[0].m_stBuilding.m_ddwPos == adwSrcPos[udwIdx])
             {
-                actionToModify.push_back(std::make_pair(ptbBuildingAction, audwTarPos[udwIdx]));
+                actionToModify.push_back(std::make_pair(ptbBuildingAction, adwTarPos[udwIdx]));
                 TSE_LOG_DEBUG(pstSession->m_poServLog, ("BuildingEdit: [actionid=%ld][srcpos=%u][tarpos=%u][seq=%u]",
-                    ptbBuildingAction->m_nId, audwSrcPos[udwIdx], audwTarPos[udwIdx], pstSession->m_udwSeqNo));
+                    ptbBuildingAction->m_nId, adwSrcPos[udwIdx], adwTarPos[udwIdx], pstSession->m_udwSeqNo));
                 pstUser->m_aucSelfAlActionFlag[udwActionIdx] = EN_TABLE_UPDT_FLAG__CHANGE;
                 break;
             }
@@ -1383,13 +1467,55 @@ TINT32 CProcessPlayer::ProcessCmd_BuildingEdit(SSession* pstSession, TBOOL& bNee
         }
     }
 
+    //添加装饰物
+    Json::Value jDeco = Json::Value(Json::objectValue);
+    for (TUINT32 udwIdx = 0; udwIdx < udwDecoCount; udwIdx++)
+    {
+        strBuildingId = CCommonFunc::NumToString(adwDecoId[udwIdx]);
+        CCityBase::AddBuilding(adwDecoPos[udwIdx], adwDecoId[udwIdx], 1, tbCity);
+        if (jDeco.isMember(strBuildingId))
+        {
+            jDeco[strBuildingId]["num"] = jDeco[strBuildingId]["num"].asInt() + 1;
+        }
+        else
+        {
+            jDeco[strBuildingId] = Json::Value(Json::objectValue);
+            jDeco[strBuildingId]["num"] = 1;
+        }
+    }
+    if (tbCity.m_bBuilding.m_udwNum >= MAX_BUILDING_NUM_IN_ONE_CITY)
+    {
+        pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__REQ_PARAM_ERROR;
+        TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessCmd_BuildingEdit: the num of buildings has reached max [seq=%u]", \
+            pstSession->m_stUserInfo.m_udwBSeqNo));
+        return -1;
+
+    }
     if(CCommonLogic::CheckBuildingCollision(&pstCity->m_stTblData, vecNewBuilding, pstSession->m_udwSeqNo) == TRUE)
     {
         pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__REQ_PARAM_ERROR;
         return -3;
     }
-
+    //修改db中装饰物表的信息
+    Json::Value jDecoList = tbDecoration.m_jDecoration_list;
+    Json::Value::Members jMember = jDecoList.getMemberNames();
+    TUINT32 udwItemNum;
+    for (TUINT32 udwIdx = 0; udwIdx < jMember.size(); udwIdx++)
+    {
+        udwItemNum = 0;
+        if (jDeco.isMember(jMember[udwIdx]))
+        {
+            udwItemNum = jDeco[jMember[udwIdx]]["num"].asUInt();
+        }
+        dwRetCode = CPlayerBase::SetDecoration(&tbDecoration, jMember[udwIdx], udwItemNum);
+        if (dwRetCode != 0)
+        {
+            pstSession->m_stCommonResInfo.m_dwRetCode = dwRetCode;
+            return -4;
+        }
+    }
     CQuestLogic::SetTaskCurValue(pstUser, pstCity, EN_TASK_TYPE_EDIT_CITY);
+    tbCity.SetFlag(TbCITY_FIELD_BUILDING);
 
     return 0;
 }
@@ -2513,6 +2639,7 @@ TINT32 CProcessPlayer::ProcessCmd_PlayerInfoGet(SSession *pstSession, TBOOL &bNe
             //pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__SEND_REQ_FAILED;
             TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessCmd_PlayerInfoGet: send req failed [seq=%u]", pstSession->m_stUserInfo.m_udwBSeqNo));
             //return -1;
+            bNeedResponse = FALSE;
             pstSession->m_udwCommandStep = EN_COMMAND_STEP__END;
             pstSession->m_stCommonResInfo.m_ucJsonType = EN_JSON_TYPE_PLAYER_LIST;
             return 0;
@@ -5996,13 +6123,14 @@ TINT32 CProcessPlayer::ProcessCmd_KillDragon(SSession *pstSession, TBOOL &bNeedR
             string szAltarId = CCommonFunc::NumToString(CCityBase::GetBuildingIdByFuncType(&pstCity->m_stTblData, EN_BUILDING_TYPE__ALTAR));
             const Json::Value& jsonBuff = pstGameInfo->m_oJsonRoot["game_building"][szAltarId]["b"]["b3"][udwAltarLevel - 1];
             Json::Value::Members members = jsonBuff.getMemberNames();
+            TINT64 ddwFactor = CCommonBase::GetGameBasicVal(EN_GAME_BASIC_ALTAR_DRAGON_BUFF_FACTOR);
             for (Json::Value::Members::iterator it = members.begin(); it != members.end(); it++)
             {
                 TUINT32 udwBuffId = jsonBuff[*it][0u].asUInt();
                 TUINT32 udwBuffNum = jsonBuff[*it][1u].asUInt();
 
                 ptbCity->m_bAltar_buff[ptbCity->m_bAltar_buff.m_udwNum].ddwBuffId = udwBuffId;
-                ptbCity->m_bAltar_buff[ptbCity->m_bAltar_buff.m_udwNum].ddwBuffNum = udwBuffNum * ptbPrisonTimer->m_bPrison_param[0].stDragon.m_ddwLevel;
+                ptbCity->m_bAltar_buff[ptbCity->m_bAltar_buff.m_udwNum].ddwBuffNum = udwBuffNum + ddwFactor * ptbPrisonTimer->m_bPrison_param[0].stDragon.m_ddwLevel;
                 ptbCity->m_bAltar_buff.m_udwNum++;
             }
             ptbCity->SetFlag(TbCITY_FIELD_ALTAR_BUFF);
@@ -7629,6 +7757,11 @@ TINT32 CProcessPlayer::ProcessCmd_TrialRageMode(SSession *pstSession, TBOOL& bNe
     }
     if (ptbPlayer->m_nTrial_rage_mode == 1)
     {
+        if (CItemBase::HasEnoughItem(&pstUser->m_tbBackpack, udwRageItemId))
+        {
+            CItemBase::SetItem(&pstUser->m_tbBackpack, udwRageItemId, 0);
+            return 0;
+        }
         pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__REQ_PARAM_ERROR;
         TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessCmd_TrialRageMode: cur mode[%d] error [seq=%u]",
             ptbPlayer->m_nTrial_rage_mode, pstSession->m_stUserInfo.m_udwBSeqNo));
@@ -8266,5 +8399,726 @@ TINT32 CProcessPlayer::ProcessCmd_FinishGuide(SSession *pstSession, TBOOL& bNees
         ptbPlayer->SetFlag(TbPLAYER_FIELD_FINISH_GUIDE_LIST);
     }
 
+    return 0;
+}
+
+TINT32 CProcessPlayer::ProcessCmd_BuildDecoration(SSession *pstSession, TBOOL &bNeedResponse)
+{
+    TINT32 dwRetCode = 0;
+    CGameInfo *poGameInfo = CGameInfo::GetInstance();
+    SBuildingInfo stBuildingInfo;
+    SUserInfo *pstUser = &pstSession->m_stUserInfo;
+    SCityInfo *pstCity = &pstUser->m_stCityInfo;
+    TbCity& tbCity = pstCity->m_stTblData;
+    TbPlayer& tbPlayer = pstSession->m_stUserInfo.m_tbPlayer;
+    TbDecoration& tbDecoration = pstSession->m_stUserInfo.m_tbDecoration;
+    // 输入参数
+    //key0=decoration_id
+    //key1=pos
+    TUINT32 udwDecoId = atoi(pstSession->m_stReqParam.m_szKey[0]);
+    TUINT32 udwPos = atoi(pstSession->m_stReqParam.m_szKey[1]);
+    TUINT32 udwLevel = 1;
+    TUINT32 udwExp = 0;
+
+    if (pstSession->m_stReqParam.m_szKey[0][0] == 0
+        || pstSession->m_stReqParam.m_szKey[1][0] == 0
+        )
+    {
+        pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__REQ_PARAM_ERROR;
+        TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessCmd_BuildDecoration: upgradetype or pos or building_type is null [seq=%u]", \
+            pstSession->m_stUserInfo.m_udwBSeqNo));
+        return -1;
+    }
+    if (tbCity.m_bBuilding.m_udwNum >= MAX_BUILDING_NUM_IN_ONE_CITY)
+    {
+        pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__REQ_PARAM_ERROR;
+        TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessCmd_BuildDecoration: the num of buildings has reached max [seq=%u]", \
+            pstSession->m_stUserInfo.m_udwBSeqNo));
+        return -1;
+
+    }
+    SCityBuildingNode* pstBuildingNode = CCityBase::GetBuildingAtPos(&tbCity, udwPos);
+    if (pstBuildingNode)
+    {
+        pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__REQ_PARAM_ERROR;
+        TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessCmd_BuildDecoration: a building has existed on the pos  [seq=%u]", \
+            pstSession->m_stUserInfo.m_udwBSeqNo));
+        return -2;
+    }
+    
+    SCityBuildingNode stNewBuilding;
+    stNewBuilding.m_ddwPos = udwPos;
+    stNewBuilding.m_ddwType = udwDecoId;
+    stNewBuilding.m_ddwLevel = udwLevel;
+    if (CCommonLogic::CheckBuildingCollision(&pstCity->m_stTblData, stNewBuilding) == TRUE)
+    {
+        pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__REQ_PARAM_ERROR;
+        TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessCmd_BuildDecoration: building collision [seq=%u]", \
+            pstSession->m_stUserInfo.m_udwBSeqNo));
+        return -3;
+    }
+
+    // 判定装饰物是否足够
+    dwRetCode = CPlayerBase::HasEnoughDecoration(&pstUser->m_tbDecoration, udwDecoId);
+    if (dwRetCode < 0)
+    {
+        pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__RESOURCE_LACK;
+        TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessCmd_BuildDecoration: decoration not enough [ret=%d] [seq=%u]", \
+            dwRetCode, pstSession->m_stUserInfo.m_udwBSeqNo));
+        return -4;
+    }
+    // 消耗装饰物
+    dwRetCode = CPlayerBase::CostDecoration(&pstUser->m_tbDecoration, udwDecoId);
+    if (dwRetCode < 0)
+    {
+        pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__REQ_PARAM_ERROR;
+        TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessCmd_BuildDecoration: decoration use failed [seq=%u]", pstSession->m_stUserInfo.m_udwBSeqNo));
+        return -5;
+    }
+    // 5. 执行upgrade
+    CCityBase::AddBuilding(udwPos, udwDecoId, udwLevel, tbCity);
+    CSendMessageBase::AddTips(pstUser, EN_TIPS_TYPE__BUILDING_OK, tbPlayer.m_nUid, FALSE, udwDecoId, udwLevel);
+    return 0;
+}
+
+TINT32 CProcessPlayer::ProcessCmd_OpenDecorationList(SSession *pstSession, TBOOL &bNeedResponse)
+{
+    //key0=series_list(:分隔)
+    string strSeries = pstSession->m_stReqParam.m_szKey[0];
+
+    SUserInfo *pstUser = &pstSession->m_stUserInfo;
+    TbDecoration& tbDecoration = pstSession->m_stUserInfo.m_tbDecoration;
+
+    std::vector<TUINT32> vecSeries;
+    CCommonFunc::GetVectorFromString(pstSession->m_stReqParam.m_szKey[0], ':', vecSeries);
+    Json::Value jSeries = Json::Value(Json::arrayValue);
+    for (TUINT32 udwIdx = 0; udwIdx < vecSeries.size(); udwIdx++)
+    {
+        jSeries.append(vecSeries[udwIdx]);
+    }
+    tbDecoration.Set_Series_list(jSeries);
+    return 0;
+}
+
+TINT32 CProcessPlayer::ProcessCmd_DeleteDecoration(SSession *pstSession, TBOOL &bNeedResponse)
+{
+    //key0=id_list(:分隔)
+    string strDecoId = pstSession->m_stReqParam.m_szKey[0];
+
+    SUserInfo *pstUser = &pstSession->m_stUserInfo;
+    SCityInfo *pstCity = &pstUser->m_stCityInfo;
+    TbCity& tbCity = pstCity->m_stTblData;
+    TbDecoration *tbDecoration = &pstUser->m_tbDecoration;
+
+    TINT64 ddwDecoId = 0;
+    std::vector<string> vecDecoId;
+    CCommonFunc::GetVectorFromString(pstSession->m_stReqParam.m_szKey[0], ':', vecDecoId);
+    Json::Value jTmp = tbDecoration->m_jDecoration_list;
+    for (TUINT32 udwIdx = 0; udwIdx < vecDecoId.size(); udwIdx++)
+    {
+        ddwDecoId = strtoll(vecDecoId[udwIdx].c_str(), NULL, 10);
+        if (jTmp[vecDecoId[udwIdx]]["still_have_num"].asUInt() == jTmp[vecDecoId[udwIdx]]["total_num"].asUInt())
+        {
+            jTmp.removeMember(vecDecoId[udwIdx]);
+            continue;
+        }
+        else
+        {
+            //删除building list
+            for (TUINT32 udwIdy = 0; udwIdy < tbCity.m_bBuilding.m_udwNum; udwIdy++)
+            {
+                if (ddwDecoId == tbCity.m_bBuilding[udwIdy].m_ddwType)
+                {
+                    CCityBase::DelBuildingAtPos(&tbCity, tbCity.m_bBuilding[udwIdy].m_ddwPos);
+                }
+            }
+            //删除db
+            jTmp.removeMember(vecDecoId[udwIdx]);
+        }
+    }
+    tbDecoration->Set_Decoration_list(jTmp);
+    return 0;
+}
+
+TINT32 CProcessPlayer::ProcessCmd_GiveGift(SSession *pstSession, TBOOL& bNeedResponse)
+{
+    SUserInfo *pstUser = &pstSession->m_stUserInfo;
+
+    TUINT32 udwGiftId = atoi(pstSession->m_stReqParam.m_szKey[0]);
+    string szContent = pstSession->m_stReqParam.m_szKey[1];
+    TCHAR *szUidList = pstSession->m_stReqParam.m_szKey[2];
+
+    TUINT32 audwUidList[MAX_ALLIANCE_MEMBER_NUM];
+    TUINT32 udwUidNum = MAX_ALLIANCE_MEMBER_NUM;
+    CCommonFunc::GetArrayFromString(szUidList, ':', audwUidList, udwUidNum);
+
+    if (pstSession->m_udwCommandStep == EN_COMMAND_STEP__INIT)
+    {
+        pstSession->m_udwCommandStep = EN_COMMAND_STEP__1;
+
+        if (udwUidNum == 0)
+        {
+            pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__REQ_PARAM_ERROR;
+            TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessCmd_GiveGift: user num[%u] is zero [seq=%u]",
+                udwUidNum, pstSession->m_udwSeqNo));
+            return -1;
+        }
+
+        if (!CItemBase::HasEnoughItem(&pstUser->m_tbBackpack, udwGiftId, udwUidNum))
+        {
+            pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__ITEM_NOT_ENOUGH;
+            TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessCmd_GiveGift: gift[%u] not enough [seq=%u]",
+                udwUidNum, pstSession->m_udwSeqNo));
+            return -1;
+        }
+
+        SSpGlobalRes stGlobalRes;
+        stGlobalRes.Reset();
+        TINT32 dwRetCode = CGlobalResLogic::GetLotteryChestGlobalResInfo(udwGiftId, &stGlobalRes);
+        if (dwRetCode < 0)
+        {
+            pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__REQ_PARAM_ERROR;
+            TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessCmd_GiveGift: get gift reward fail[gift_id: %u] [seq=%u]",
+                udwGiftId, pstSession->m_udwSeqNo));
+            return -1;
+        }
+    }
+    
+    if (EN_COMMAND_STEP__1 == pstSession->m_udwCommandStep)
+    {
+        TINT32 dwRetCode = 0;
+
+        // reset req
+        pstSession->ResetTranslateInfo();
+        // next procedure
+        pstSession->m_udwCommandStep = EN_COMMAND_STEP__2;
+
+        TBOOL bTranslate = FALSE;
+        if (bTranslate && !szContent.empty() && 0 != CDocument::GetInstance()->GetSupportLangNum())
+        {
+            pstSession->m_udwExpectProcedure = EN_EXPECT_PROCEDURE__TRANSLATE;
+            // send request
+            bNeedResponse = TRUE;
+            Json::FastWriter oJsonWriter;
+            oJsonWriter.omitEndingLineFeed();
+            Json::Value jTranslateJson = Json::Value(Json::objectValue);
+            for (TINT32 dwIdx = 0; dwIdx < CDocument::GetInstance()->GetSupportLangNum(); ++dwIdx)
+            {
+                jTranslateJson.clear();
+                TranslateReqInfo *pstTranslateReq = new TranslateReqInfo;
+                jTranslateJson["0"]["from"] = "";
+                jTranslateJson["0"]["to"] = CDocument::GetInstance()->GetShortLangName(dwIdx);
+                jTranslateJson["0"]["content"] = szContent;
+                pstTranslateReq->SetVal("mail", "translate", oJsonWriter.write(jTranslateJson));
+                pstSession->m_vecTranslateReq.push_back(pstTranslateReq);
+
+                TSE_LOG_DEBUG(pstSession->m_poServLog, ("ProcessCmd_GiveGift: [TranslateType=%s] [TranslateOperate=%s] [TranslateReqContent=%s] [seq:%u]", 
+                    pstTranslateReq->m_strTranslateType.c_str(), 
+                    pstTranslateReq->m_strTranslateOperate.c_str(), 
+                    pstTranslateReq->m_strTranslateContent.c_str(), 
+                    pstSession->m_udwSeqNo));
+            }
+
+            dwRetCode = CBaseProcedure::SendTranslateRequest(pstSession, EN_SERVICE_TYPE_TRANSLATE_REQ);
+            if (dwRetCode != 0)
+            {
+                bNeedResponse = FALSE;
+                pstSession->m_udwCommandStep = EN_COMMAND_STEP__2;
+                TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessCmd_GiveGift: send translate req fail [ret=%d] [seq=%u]", 
+                    dwRetCode, pstSession->m_udwSeqNo));
+            }
+            else
+            {
+                return 0;
+            }
+        }
+    }
+
+    if (pstSession->m_udwCommandStep == EN_COMMAND_STEP__2)
+    {
+        pstSession->m_udwCommandStep = EN_COMMAND_STEP__3;
+
+        CGameInfo *poGameInfo = CGameInfo::GetInstance();
+        TCHAR szGiftId[64];
+        sprintf(szGiftId, "%u", udwGiftId);
+        if (!poGameInfo->m_oJsonRoot["game_item"].isMember(szGiftId))
+        {
+            pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__REQ_PARAM_ERROR;
+            TSE_LOG_ERROR(CGameInfo::GetInstance()->m_poLog, ("ProcessCmd_GiveGift:game.json not include gift_id=%u [ret=-2]", udwGiftId));
+            return -1;
+        }
+        //判断是否走运营
+        TINT32 dwIsDataCenter = poGameInfo->m_oJsonRoot["game_item"][szGiftId]["a21"].asInt();
+
+        if (dwIsDataCenter == 1)
+        {
+            pstSession->m_udwExpectProcedure = EN_EXPECT_PROCEDURE__DATA_CENTER;
+            pstSession->ResetDataCenterInfo();
+
+            DataCenterReqInfo* pstReq = new DataCenterReqInfo;
+            pstReq->m_udwType = EN_REFRESH_DATA_TYPE__CHEST;
+            Json::Value rDataReqJson = Json::Value(Json::objectValue);
+
+            rDataReqJson["sid"] = pstUser->m_tbLogin.m_nSid;
+            rDataReqJson["uid"] = pstUser->m_tbPlayer.m_nUid;
+            rDataReqJson["castle_lv"] = CCityBase::GetBuildingLevelByFuncType(&pstUser->m_stCityInfo, EN_BUILDING_TYPE__CASTLE);
+            rDataReqJson["request"] = Json::Value(Json::objectValue);
+            rDataReqJson["request"]["chest_id"] = udwGiftId;
+            rDataReqJson["request"]["open_num"] = 1;
+
+            Json::FastWriter writer;
+            writer.omitEndingLineFeed();
+            pstReq->m_sReqContent = writer.write(rDataReqJson);
+            pstSession->m_vecDataCenterReq.push_back(pstReq);
+
+            TSE_LOG_DEBUG(pstSession->m_poServLog, ("ProcessCmd_GiveGift: data center req: [type=%u] [uid=%ld] [seq=%u] [json=%s]", 
+                pstReq->m_udwType, 
+                pstUser->m_tbPlayer.m_nUid, 
+                pstSession->m_udwSeqNo, 
+                pstReq->m_sReqContent.c_str()));
+            bNeedResponse = TRUE;
+            TINT32 dwRetCode = CBaseProcedure::SendDataCenterRequest(pstSession, EN_SERVICE_TYPE_DATA_CENTER_REQ);
+            if (dwRetCode == 0)
+            {
+                return 0;
+            }
+            else
+            {
+                pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__SEND_DATA_CENTER_REQ_ERR;
+                TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessCmd_GiveGift: send request to data center failed. [json=%s] [ret=%d] [seq=%u]", 
+                    pstReq->m_sReqContent.c_str(), dwRetCode, pstUser->m_udwBSeqNo));
+                return -5;
+            }
+        }
+    }
+
+    if (EN_COMMAND_STEP__3 == pstSession->m_udwCommandStep)
+    {
+        TBOOL bTranslateFalg = FALSE;
+        if ((TUINT32)CDocument::GetInstance()->GetSupportLangNum() == pstSession->m_vecTranslateRsp.size()
+            && 0 != pstSession->m_vecTranslateRsp.size())
+        {
+            bTranslateFalg = TRUE;
+        }
+        for (TUINT32 udwIdx = 0; udwIdx < pstSession->m_vecTranslateRsp.size(); ++udwIdx)
+        {
+            if (0 != pstSession->m_vecTranslateRsp[udwIdx]->m_dwRetCode)
+            {
+                bTranslateFalg = FALSE;
+                TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessCmd_GiveGift: parse translate info fail [seq=%u]",
+                    pstSession->m_stUserInfo.m_udwBSeqNo));
+            }
+            else
+            {
+                TSE_LOG_DEBUG(pstSession->m_poServLog, ("ProcessCmd_GiveGift: [TranslateType=%s] [TranslateOperate=%s] [TranslateContent=%s] [TranslateResult=%s] [seq=%u]",
+                    pstSession->m_vecTranslateRsp[udwIdx]->m_strTranslateType.c_str(),
+                    pstSession->m_vecTranslateRsp[udwIdx]->m_strTranslateOperate.c_str(),
+                    pstSession->m_vecTranslateRsp[udwIdx]->m_strTranslateContent.c_str(),
+                    pstSession->m_vecTranslateRsp[udwIdx]->m_strTranslateResult.c_str(),
+                    pstSession->m_stUserInfo.m_udwBSeqNo));
+            }
+        }
+
+        TINT32 dwLanguageId = -1;
+        string strTranslateContent = "";
+        Json::FastWriter oJsonWriter;
+        oJsonWriter.omitEndingLineFeed();
+        Json::Value jContent = Json::Value(Json::objectValue);
+        jContent["raw_content"] = szContent;
+        Json::Value &jTranslateJson = jContent["translate_info"];
+        jTranslateJson = Json::Value(Json::objectValue);
+        if (TRUE == bTranslateFalg)
+        {
+            for (TUINT32 udwIdx = 0; udwIdx < pstSession->m_vecTranslateRsp.size(); ++udwIdx)
+            {
+                Json::Reader jsonReader;
+                Json::Value jResultBody;
+                if (jsonReader.parse(pstSession->m_vecTranslateRsp[udwIdx]->m_strTranslateResult.c_str(), jResultBody))
+                {
+                    if (0 == udwIdx)
+                    {
+                        dwLanguageId = atoi(CDocument::GetInstance()->GetLanguageId(jResultBody["0"]["from"].asString().c_str(), pstSession->m_stReqParam.m_udwLang).c_str());
+                    }
+                    Json::Value::Members vecMembers = jResultBody.getMemberNames();
+                    for (TUINT32 udwIdy = 0; udwIdy < vecMembers.size(); ++udwIdy)
+                    {
+                        jTranslateJson[CDocument::GetInstance()->GetLangId(jResultBody[vecMembers[0]]["to"].asString()).c_str()][vecMembers[udwIdy]] = jResultBody[vecMembers[udwIdy]]["content"];
+                    }
+                }
+            }
+        }
+        jContent["raw_lang"] = dwLanguageId;
+
+        strTranslateContent = oJsonWriter.write(jContent);
+
+        CGameInfo *poGameInfo = CGameInfo::GetInstance();
+        TCHAR szGiftId[64];
+        sprintf(szGiftId, "%u", udwGiftId);
+        //判断是否走运营
+        TINT32 dwIsDataCenter = poGameInfo->m_oJsonRoot["game_item"][szGiftId]["a21"].asInt();
+
+        SSpGlobalRes stGlobalRes;
+        stGlobalRes.Reset();
+
+        if (dwIsDataCenter == 0)
+        {
+            TINT32 dwRetCode = CGlobalResLogic::GetLotteryChestGlobalResInfo(udwGiftId, &stGlobalRes);
+            if (dwRetCode != 0)
+            {
+                pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__REQ_PARAM_ERROR;
+                TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessCmd_GiveGift: GetLotteryChestGlobalResInfo ret[%d] [seq=%u]",
+                    dwRetCode, pstUser->m_udwBSeqNo));
+                return -8;
+            }
+        }
+        else
+        {
+            SRefreshData stRefreshData;
+            vector<DataCenterRspInfo*>& vecRsp = pstSession->m_vecDataCenterRsp;
+            DataCenterRspInfo *pstDataCenterRsp = NULL;
+            if (vecRsp.size() > 0)
+            {
+                stRefreshData.Reset();
+                Json::Reader jsonReader;
+                Json::Value oRspDataJson;
+                for (TUINT32 udwIdx = 0; udwIdx < vecRsp.size(); ++udwIdx)
+                {
+                    pstDataCenterRsp = vecRsp[udwIdx];
+                    if (EN_REFRESH_DATA_TYPE__CHEST == pstDataCenterRsp->m_udwType)
+                    {
+                        TSE_LOG_DEBUG(pstSession->m_poServLog, ("ProcessCmd_GiveGift: data center get rsp: [json=%s] [uid=%ld][seq=%u]",
+                            pstDataCenterRsp->m_sRspJson.c_str(), 
+                            pstUser->m_tbPlayer.m_nUid, 
+                            pstUser->m_udwBSeqNo));
+
+                        if (FALSE == jsonReader.parse(pstDataCenterRsp->m_sRspJson, oRspDataJson))
+                        {
+                            pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__PARSE_DATA_CENTER_PACKAGE_ERR;
+                            TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessCmd_GiveGift: prase rsp from data center failed. [seq=%u]", 
+                                pstUser->m_udwBSeqNo));
+                            return -6;
+                        }
+                        TINT32 dwRetCode = stRefreshData.m_stChestRsp.setVal(oRspDataJson);
+                        if (0 != dwRetCode)
+                        {
+                            pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__DATA_CENTER_PACKAGE_FORMAT_ERR;
+                            TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessCmd_GiveGift: response data format error. [ret=%d][seq=%u]", 
+                                dwRetCode, pstUser->m_udwBSeqNo));
+                            return -7;
+                        }
+                        break;
+                    }
+                }
+                if (MAX_SP_REWARD_ITEM_NUM < stRefreshData.m_stChestRsp.m_vecReward.size()
+                    || 0 >= stRefreshData.m_stChestRsp.m_vecReward.size())
+                {
+                    pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__REQ_PARAM_ERROR;
+                    TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessCmd_GiveGift: chest reward size is over. [size=%ld] [seq=%u]", 
+                        stRefreshData.m_stChestRsp.m_vecReward.size(), pstUser->m_udwBSeqNo));
+                    return -8;
+                }
+
+                for (TINT32 dwIdx = 0; dwIdx < stRefreshData.m_stChestRsp.m_vecReward.size(); ++dwIdx)
+                {
+                    SOneGlobalRes *pstOneGlobalRes = stRefreshData.m_stChestRsp.m_vecReward[dwIdx];
+                    stGlobalRes.aRewardList[dwIdx].udwType = pstOneGlobalRes->ddwType;
+                    stGlobalRes.aRewardList[dwIdx].udwId = pstOneGlobalRes->ddwId;
+                    stGlobalRes.aRewardList[dwIdx].udwNum = pstOneGlobalRes->ddwNum;
+                    ++stGlobalRes.udwTotalNum;
+                    if (stGlobalRes.udwTotalNum >= TBMAIL_EX_REWARD_MAX_NUM)
+                    {
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (stGlobalRes.udwTotalNum == 0)
+        {
+            pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__REQ_PARAM_ERROR;
+            TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessCmd_GiveGift: reward size == 0 [seq=%u]",
+                pstUser->m_udwBSeqNo));
+            return -8;
+        }
+
+        CMsgBase::GiveGift(pstUser->m_tbPlayer.m_nUid, audwUidList, udwUidNum, udwGiftId, strTranslateContent, &stGlobalRes);
+
+        CItemBase::CostItem(&pstUser->m_tbBackpack, udwGiftId, udwUidNum);
+
+        pstSession->m_udwCommandStep = EN_COMMAND_STEP__END;
+        return 0;
+    }
+
+    return 0;
+}
+
+TINT32 CProcessPlayer::ProcessCmd_LordSkillUpgradeNew(SSession* pstSession, TBOOL& bNeedResponse)
+{
+    SUserInfo* pstUser = &pstSession->m_stUserInfo;
+    TbUser_stat* ptbUserStat = &pstUser->m_tbUserStat;
+
+    TUINT32 udwCount = 0;
+    TINT32 dwSkillId = 0;
+    TINT32 dwPoint = 0;
+    TINT32 dwTotalPoint = 0;
+    const TCHAR ucPair = ':';
+    const TCHAR ucEntry = ',';
+    TINT32 adwIdList[EN_SKILL_TYPE__END];
+    TINT32 adwPointList[EN_SKILL_TYPE__END];
+    //key0=Id1:Lv1,Id2:Lv2
+    const TCHAR* pSkillInfo = pstSession->m_stReqParam.m_szKey[0];
+    //处理参数
+    while (pSkillInfo && *pSkillInfo)
+    {
+        adwIdList[udwCount] = atoi(pSkillInfo);
+        pSkillInfo = strchr(pSkillInfo, ucPair);
+        if (pSkillInfo != NULL)
+        {
+            pSkillInfo++;
+            adwPointList[udwCount] = atoi(pSkillInfo);
+            udwCount++;
+            if (udwCount == EN_SKILL_TYPE__END)
+            {
+                break;
+            }
+        }
+        else
+        {
+            break;
+        }
+        pSkillInfo = strchr(pSkillInfo, ucEntry);
+        if (pSkillInfo != NULL)
+        {
+            pSkillInfo++;
+        }
+    }
+    if (udwCount == 0)
+    {
+        pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__REQ_PARAM_ERROR;
+        return -1;
+    }
+    //reset skill
+    pstUser->m_tbUserStat.m_bLord_skill[0].Reset();
+    for (TUINT32 udwIdx = 0; udwIdx < udwCount; udwIdx++)
+    {
+        dwSkillId = adwIdList[udwIdx];
+        dwPoint = adwPointList[udwIdx];
+        if (dwSkillId >= EN_SKILL_TYPE__END || dwSkillId < 0)
+        {
+            pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__REQ_PARAM_ERROR;
+            return -2;
+        }
+        if (dwPoint > CPlayerBase::GetLordSkillPointLimit(dwSkillId))
+        {
+            //pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__REQ_PARAM_ERROR;
+            TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessReqCommand_SkillUpgrade: skill point over max [seq=%u]", pstSession->m_udwSeqNo));
+            return 0;
+        }
+        ptbUserStat->m_bLord_skill[0].m_addwLevel[dwSkillId] = dwPoint;
+        dwTotalPoint += dwPoint;
+    }
+    //技能依赖
+    for (TUINT32 udwIdx = 0; udwIdx < udwCount; udwIdx++)
+    {
+        dwSkillId = adwIdList[udwIdx];
+        dwPoint = adwPointList[udwIdx];
+        if (!CPlayerBase::IsMeetLordSkillReliance(pstUser, dwSkillId, dwPoint))
+        {
+            //pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__REQ_PARAM_ERROR;
+            TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessReqCommand_SkillUpgrade: skill rely not meet [seq=%u]", pstSession->m_udwSeqNo));
+            return 0;
+        }
+    }
+    if (dwTotalPoint > pstUser->m_stPlayerBuffList[EN_BUFFER_INFO_INCREACE_LORD_SKILL_POINT].m_ddwBuffTotal)
+    {
+        pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__REQ_PARAM_ERROR;
+        return -3;
+    }
+    ptbUserStat->SetFlag(TbUSER_STAT_FIELD_LORD_SKILL);
+    return 0;
+}
+
+TINT32 CProcessPlayer::ProcessCmd_DragonSkillUpgradeNew(SSession* pstSession, TBOOL& bNeedResponse)
+{
+    SUserInfo* pstUser = &pstSession->m_stUserInfo;
+    TbUser_stat* ptbUserStat = &pstUser->m_tbUserStat;
+
+    TUINT32 udwCount = 0;
+    TINT32 dwSkillId = 0;
+    TINT32 dwPoint = 0;
+    TINT32 dwTotalPoint = 0;
+    const TCHAR ucPair = ':';
+    const TCHAR ucEntry = ',';
+    TINT32 adwIdList[EN_SKILL_TYPE__END];
+    TINT32 adwPointList[EN_SKILL_TYPE__END];
+    //key0=Id1:Lv1,Id2:Lv2
+    const TCHAR* pSkillInfo = pstSession->m_stReqParam.m_szKey[0];
+    //处理参数
+    while (pSkillInfo && *pSkillInfo)
+    {
+        adwIdList[udwCount] = atoi(pSkillInfo);
+        pSkillInfo = strchr(pSkillInfo, ucPair);
+        if (pSkillInfo != NULL)
+        {
+            pSkillInfo++;
+            adwPointList[udwCount] = atoi(pSkillInfo);
+            udwCount++;
+            if (udwCount == EN_SKILL_TYPE__END)
+            {
+                break;
+            }
+        }
+        else
+        {
+            break;
+        }
+        pSkillInfo = strchr(pSkillInfo, ucEntry);
+        if (pSkillInfo != NULL)
+        {
+            pSkillInfo++;
+        }
+    }
+    if (udwCount == 0)
+    {
+        pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__REQ_PARAM_ERROR;
+        return -1;
+    }
+    if (pstUser->m_tbPlayer.m_nHas_dragon == 0)
+    {
+        pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__REQ_PARAM_ERROR;
+        return -1;
+    }
+    //reset skill
+    pstUser->m_tbUserStat.m_bDragon_skill[0].Reset();
+    for (TUINT32 udwIdx = 0; udwIdx < udwCount; udwIdx++)
+    {
+        dwSkillId = adwIdList[udwIdx];
+        dwPoint = adwPointList[udwIdx];
+        if (dwSkillId >= EN_SKILL_TYPE__END || dwSkillId < 0)
+        {
+            pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__REQ_PARAM_ERROR;
+            return -2;
+        }
+        if (dwPoint > CPlayerBase::GetDragonSkillPointLimit(dwSkillId))
+        {
+            //pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__REQ_PARAM_ERROR;
+            TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessReqCommand_SkillUpgrade: skill point over max [seq=%u]", pstSession->m_udwSeqNo));
+            return 0;
+        }
+        ptbUserStat->m_bDragon_skill[0].m_addwLevel[dwSkillId] = dwPoint;
+        dwTotalPoint += dwPoint;
+    }
+    //技能依赖
+    for (TUINT32 udwIdx = 0; udwIdx < udwCount; udwIdx++)
+    {
+        dwSkillId = adwIdList[udwIdx];
+        dwPoint = adwPointList[udwIdx];
+        if (!CPlayerBase::IsMeetDragonMonsterSkillReliance(pstUser, dwSkillId, dwPoint))
+        {
+            //pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__REQ_PARAM_ERROR;
+            TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessReqCommand_SkillUpgrade: skill rely not meet [seq=%u]", pstSession->m_udwSeqNo));
+            return 0;
+        }
+    }
+    if (dwTotalPoint > pstUser->m_stPlayerBuffList[EN_BUFFER_INFO_INCREACE_DRAGON_SKILL_POINT].m_ddwBuffTotal)
+    {
+        pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__REQ_PARAM_ERROR;
+        return -3;
+    }
+    ptbUserStat->SetFlag(TbUSER_STAT_FIELD_DRAGON_SKILL);
+
+    BITSET(pstUser->m_tbLogin.m_bGuide_flag[0].m_bitFlag, EN_GUIDE_FINISH_STAGE_5_ASSIGN_HERO_SKILL);
+    pstUser->m_tbLogin.SetFlag(TbLOGIN_FIELD_GUIDE_FLAG);
+    return 0;
+}
+
+TINT32 CProcessPlayer::ProcessCmd_DragonMonsterSkillUpgradeNew(SSession* pstSession, TBOOL& bNeedResponse)
+{
+    SUserInfo* pstUser = &pstSession->m_stUserInfo;
+    TbUser_stat* ptbUserStat = &pstUser->m_tbUserStat;
+
+    TUINT32 udwCount = 0;
+    TINT32 dwSkillId = 0;
+    TINT32 dwPoint = 0;
+    TINT32 dwTotalPoint = 0;
+    const TCHAR ucPair = ':';
+    const TCHAR ucEntry = ',';
+    TINT32 adwIdList[EN_SKILL_TYPE__END];
+    TINT32 adwPointList[EN_SKILL_TYPE__END];
+    //key0=Id1:Lv1,Id2:Lv2
+    const TCHAR* pSkillInfo = pstSession->m_stReqParam.m_szKey[0];
+    //处理参数
+    while (pSkillInfo && *pSkillInfo)
+    {
+        adwIdList[udwCount] = atoi(pSkillInfo);
+        pSkillInfo = strchr(pSkillInfo, ucPair);
+        if (pSkillInfo != NULL)
+        {
+            pSkillInfo++;
+            adwPointList[udwCount] = atoi(pSkillInfo);
+            udwCount++;
+            if (udwCount == EN_SKILL_TYPE__END)
+            {
+                break;
+            }
+        }
+        else
+        {
+            break;
+        }
+        pSkillInfo = strchr(pSkillInfo, ucEntry);
+        if (pSkillInfo != NULL)
+        {
+            pSkillInfo++;
+        }
+    }
+    if (udwCount == 0)
+    {
+        pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__REQ_PARAM_ERROR;
+        return -1;
+    }
+    if (pstUser->m_tbPlayer.m_nHas_dragon == 0)
+    {
+        pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__REQ_PARAM_ERROR;
+        return -1;
+    }
+    //reset skill
+    pstUser->m_tbUserStat.m_bDragon_monster_skill[0].Reset();
+    for (TUINT32 udwIdx = 0; udwIdx < udwCount; udwIdx++)
+    {
+        dwSkillId = adwIdList[udwIdx];
+        dwPoint = adwPointList[udwIdx];
+        if (dwSkillId >= EN_SKILL_TYPE__END || dwSkillId < 0)
+        {
+            pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__REQ_PARAM_ERROR;
+            return -2;
+        }
+        if (dwPoint > CPlayerBase::GetDragonMonsterSkillPointLimit(dwSkillId))
+        {
+            //pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__REQ_PARAM_ERROR;
+            TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessReqCommand_SkillUpgrade: skill point over max [seq=%u]", pstSession->m_udwSeqNo));
+            return 0;
+        }
+        ptbUserStat->m_bDragon_monster_skill[0].m_addwLevel[dwSkillId] = dwPoint;
+        dwTotalPoint += dwPoint;
+    }
+    //技能依赖
+    for (TUINT32 udwIdx = 0; udwIdx < udwCount; udwIdx++)
+    {
+        dwSkillId = adwIdList[udwIdx];
+        dwPoint = adwPointList[udwIdx];
+        if (!CPlayerBase::IsMeetDragonMonsterSkillReliance(pstUser, dwSkillId, dwPoint))
+        {
+            //pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__REQ_PARAM_ERROR;
+            TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessReqCommand_SkillUpgrade: skill rely not meet [seq=%u]", pstSession->m_udwSeqNo));
+            return 0;
+        }
+    }
+    if (dwTotalPoint > pstUser->m_stPlayerBuffList[EN_BUFFER_INFO_INCREACE_MONSTER_SKILL_POINT].m_ddwBuffTotal)
+    {
+        pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__REQ_PARAM_ERROR;
+        return -3;
+    }
+    ptbUserStat->SetFlag(TbUSER_STAT_FIELD_DRAGON_MONSTER_SKILL);
     return 0;
 }

@@ -1367,7 +1367,7 @@ TINT64 CQuestLogic::GetOwnNum(SCityInfo *pstCity, SUserInfo *pstUser, TUINT32 ud
         ddwOwnNum = pstUser->m_tbPlayer.m_nAge;
         break;
     case EN_TASK_TYPE_VIP_UPGRADE:
-        ddwOwnNum = CPlayerBase::GetRawVipLevel(pstUser->m_tbPlayer.m_nVip_point);
+        ddwOwnNum = CPlayerBase::GetRawVipLevel(&pstUser->m_tbPlayer, pstUser->m_tbPlayer.m_nVip_point);
         break;
     case EN_TASK_TYPE_GET_GOLD_RESOURCE:
         ddwOwnNum = pstUser->m_tbPlayer.m_bGain_resource[0].m_addwNum[EN_RESOURCE_TYPE__GOLD];
@@ -3366,4 +3366,84 @@ TBOOL CQuestLogic::CheckTaskRealCanStart( SUserInfo *pstUser, SCityInfo *pstCity
     }
 
     return bCanStart;
+}
+
+TVOID CQuestLogic::CheckPlayerTimeQuestValid( SUserInfo *pstUser, const char* strPos )
+{
+    TBOOL bValid = TRUE;
+    //wave@20161130: for bug check
+    bValid = CQuestLogic::CheckQuestValid(&pstUser->m_tbQuest.m_bDaily_quest[0], TRUE, strPos, "daily", pstUser->m_udwBSeqNo, pstUser->m_tbPlayer.m_nUid);
+    if(bValid == FALSE)
+    {
+        pstUser->m_tbQuest.SetFlag(TbQUEST_FIELD_DAILY_QUEST);
+    }
+    bValid = CQuestLogic::CheckQuestValid(&pstUser->m_tbQuest.m_bAl_quest[0], TRUE, strPos, "alliance", pstUser->m_udwBSeqNo, pstUser->m_tbPlayer.m_nUid);
+    if(bValid == FALSE)
+    {
+        pstUser->m_tbQuest.SetFlag(TbQUEST_FIELD_AL_QUEST);
+    }
+    bValid = CQuestLogic::CheckQuestValid(&pstUser->m_tbQuest.m_bVip_quest[0], TRUE, strPos, "vip", pstUser->m_udwBSeqNo, pstUser->m_tbPlayer.m_nUid);
+    if(bValid == FALSE)
+    {
+        pstUser->m_tbQuest.SetFlag(TbQUEST_FIELD_VIP_QUEST);
+    }
+}
+
+TBOOL CQuestLogic::CheckQuestValid( SQuestNode* pstQuestNode, TBOOL bResetInvalid, const char* strFlag, const char* strType, TUINT32 udwSeq, TINT64 ddwUid )
+{
+    TBOOL bRet = TRUE;
+    TBOOL bValid = FALSE;
+
+    if(pstQuestNode->m_ddwQuestNum > MAX_TIME_QUEST_NUM)
+    {
+        TSE_LOG_ERROR(CGameInfo::GetInstance()->m_poLog, ("CheckQuestValid: pos=%s, type=%s quest_num=%ld [uid=%ld] [seq=%u]", 
+                strFlag, strType, pstQuestNode->m_ddwQuestNum, ddwUid, udwSeq));
+
+        pstQuestNode->m_ddwQuestNum = MAX_TIME_QUEST_NUM;
+        bRet = FALSE;
+    }
+
+    for(int idx = 0; idx < pstQuestNode->m_ddwQuestNum; idx++)
+    {
+        bValid = IsValidQuest(&pstQuestNode->m_stQuestCom[idx]);
+        if(bValid == FALSE)
+        {
+            bRet = FALSE;
+            TSE_LOG_ERROR(CGameInfo::GetInstance()->m_poLog, ("CheckQuestValid: pos=%s, type=%s quest_idx=%d quest_num=%ld [bt=%ld,ct=%ld,lv=%ld,rewards=%ld] [uid=%ld] [seq=%u]", 
+                strFlag, strType, idx, pstQuestNode->m_ddwQuestNum, pstQuestNode->m_stQuestCom[idx].m_ddwBTime, pstQuestNode->m_stQuestCom[idx].m_ddwCTime, 
+                pstQuestNode->m_stQuestCom[idx].m_ddwLv, pstQuestNode->m_stQuestCom[idx].m_stReward.ddwTotalNum , ddwUid, udwSeq));
+            if(bResetInvalid)
+            {
+                ResetInvalidQuest(&pstQuestNode->m_stQuestCom[idx]);
+            }
+        }
+    }
+    return bRet;
+}
+
+TBOOL CQuestLogic::IsValidQuest( SQuestComm *pstQuestItem )
+{
+    if(pstQuestItem->m_ddwBTime < 0 || pstQuestItem->m_ddwBTime > CTimeUtils::GetUnixTime()+100)
+    {
+        return FALSE;
+    }
+    if(pstQuestItem->m_ddwCTime > 20000)
+    {
+        return FALSE;
+    }
+    if(pstQuestItem->m_ddwLv > 6)
+    {
+        return FALSE;
+    }
+    if(pstQuestItem->m_stReward.ddwTotalNum > 5)
+    {
+        return FALSE;
+    }
+    return TRUE;
+}
+
+TVOID CQuestLogic::ResetInvalidQuest( SQuestComm *pstQuestItem )
+{
+    pstQuestItem->Reset();
+    pstQuestItem->m_ddwStatus = EN_TIME_QUEST_STATUS_DONE;
 }

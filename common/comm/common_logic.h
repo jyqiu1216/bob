@@ -52,7 +52,9 @@ public:
 
     static TVOID GenPrisonReport(TbMarch_action* ptbPrison, TbPlayer* ptbSaver, TINT32 dwReportType, TINT32 dwReportResult, TbReport* ptbReport);
 
-    static TFLOAT32 GetIapNumByRechargeGem(const TUINT32 udwGemNum);
+    static TUINT32 GetPurchaseAbility(TUINT32 udwGemNum);
+    static TUINT32 GetIapPay(const string& sItemId);
+    static TUINT32 GetIapPayCent(const string& sItemId);
 
     static TVOID AddBookMark(SUserInfo *pstUser, TUINT64 uddwPos, TUINT8 ucBookmarkType, string pszBookmarkNick);
 

@@ -374,7 +374,7 @@ int CHuWork::ProcessReqParam(RequestParam *pstReqParam, SSession *pstSession)
             pstReq->m_udwCommandID = CClientCmd::GetInstance()->GetCommandID(pstReq->m_szCommand);
 
         }
-        else if(0 == strcmp(pstHttpParam->key, "sandbox"))
+        else if(0 == strcmp(pstHttpParam->key, "is_sand_box"))
         {
             pstReq->m_ucIsSandBox = atoi(pstHttpParam->value);
         }

@@ -620,6 +620,10 @@ TVOID CHuCBLog::OutLogCbLog(SSession *pstSession, string strCommand /*= ""*/, st
 			continue;
 		}
 		TINT32 dwFuncType = CCityBase::GetBuildingFuncType(pstBuildingNode->m_ddwType);
+        if (dwFuncType >= EN_BUILDING_TYPE__END)
+        {
+            continue;
+        }
 		if (pstBuildingNode->m_ddwLevel > dwTopLevel[dwFuncType] )
 		{
 			dwTopLevel[dwFuncType] = pstBuildingNode->m_ddwLevel;

@@ -19,6 +19,7 @@ public:
     static TINT32 QueryMailDetailIdGet(SSession* pstSession, TINT64 ddwMailId, TINT64 ddwDisplayType, TINT64 ddwSuid, TINT64 ddwRuid, TINT32 bIsSupport = 0);
     static TINT32 SetMailStatus(SSession* pstSession, TINT32 dwStatus, TBOOL bIsClear, const TCHAR* pOpMailList);
     static TINT32 SetMailRewardCollect(SSession* pstSession, TINT64 ddwMailId);
+    static TINT32 SetMailRewardCollect(SSession* pstSession, TbPlayer *ptbPlayer, TbUser_stat *ptbUserStat, TINT64 ddwMailId);
     static TINT32 MailUserPut(SSession* pstSession, TbMail_user *atbMailUser, TUINT32 udwMailUserNum);
     static TINT32 MailUserDelete(SSession* pstSession, TINT64 ddwUid, TINT64 ddwMid);
 };

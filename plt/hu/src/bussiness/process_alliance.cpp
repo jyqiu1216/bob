@@ -3402,6 +3402,7 @@ TINT32 CProcessAlliance::ProcessCmd_AlGiftOpen(SSession *pstSession, TBOOL &bNee
         if (pstUser->m_atbAlGiftReward[udwIdx].m_nGid == ddwGiftId)
         {
             ptbAlGiftReward = &pstUser->m_atbAlGiftReward[udwIdx];
+            pstUser->m_aucAlGiftRewardFlag[udwIdx] = EN_TABLE_UPDT_FLAG__CHANGE;
             break;
         }
     }
@@ -3409,6 +3410,7 @@ TINT32 CProcessAlliance::ProcessCmd_AlGiftOpen(SSession *pstSession, TBOOL &bNee
     if (NULL == ptbAlGiftReward)
     {
         ptbAlGiftReward = &pstUser->m_atbAlGiftReward[pstUser->m_udwAlGiftRewardNum];
+        pstUser->m_aucAlGiftRewardFlag[pstUser->m_udwAlGiftRewardNum] = EN_TABLE_UPDT_FLAG__CHANGE;
         pstUser->m_udwAlGiftRewardNum++;
         ptbAlGiftReward->Set_Uid(pstUser->m_tbPlayer.m_nUid);
         ptbAlGiftReward->Set_Gid(ddwGiftId);
@@ -3418,6 +3420,15 @@ TINT32 CProcessAlliance::ProcessCmd_AlGiftOpen(SSession *pstSession, TBOOL &bNee
     {
         TINT32 dwStatus = EN_AL_GIFT_STATUS_CLEARED;
         dwStatus = ptbAlGiftReward->m_nStatus;
+        set<TINT64> setClearAlGift;
+        for (TUINT32 udwIdx = 0; udwIdx < pstUser->m_tbClearAlGift.m_bClear_al_gift.m_udwNum; udwIdx++)
+        {
+            setClearAlGift.insert(pstUser->m_tbClearAlGift.m_bClear_al_gift[udwIdx]);
+        }
+        if (setClearAlGift.count(ddwGiftId))
+        {
+            dwStatus = EN_AL_GIFT_STATUS_CLEARED;
+        }
         if (EN_AL_GIFT_STATUS_NORMAL != dwStatus)  //×´Ì¬´íÎó
         {
             pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__REQ_PARAM_ERROR;
@@ -3583,8 +3594,6 @@ TINT32 CProcessAlliance::ProcessCmd_AlGiftOpen(SSession *pstSession, TBOOL &bNee
 
             ptbAlGift->Set_Gift_point(stRefreshData.m_stAllianceGiftRsp.m_sAllianceGift[0].ddwGiftPoint);
             pstSession->m_stUserInfo.m_stAlGifts.m_aucUpdateFlag[dwCurAlGiftIdx] = EN_TABLE_UPDT_FLAG__CHANGE;
-
-
         }
 
         pstSession->m_udwCommandStep = EN_COMMAND_STEP__END;
@@ -3613,9 +3622,19 @@ TINT32 CProcessAlliance::ProcessCmd_AlGiftGet(SSession *pstSession, TBOOL &bNeed
     TUINT32 audwAlReward[AL_GIFT_OPEN_RSP_NUM];
     TUINT32 udwExpiredNum = 0;
 
+    set<TINT64> setClearAlGift;
+    for (TUINT32 udwIdx = 0; udwIdx < pstUser->m_tbClearAlGift.m_bClear_al_gift.m_udwNum; udwIdx++)
+    {
+        setClearAlGift.insert(pstUser->m_tbClearAlGift.m_bClear_al_gift[udwIdx]);
+    }
+
     for (TINT32 dwIdx = 0; dwIdx < pstAlGifts->m_dwGiftNum; ++dwIdx)
     {
         TbAl_gift* ptbAlGift = &((*pstAlGifts)[dwIdx]);
+        if (setClearAlGift.count(ptbAlGift->m_nId))
+        {
+            continue;
+        }
         TbAl_gift_reward *ptbAlGiftReward = NULL;
         TINT32 dwRewardIdx = -1;
         for (TUINT32 udwIdx = 0; udwIdx < pstSession->m_stUserInfo.m_udwAlGiftRewardNum; udwIdx++)
@@ -3629,7 +3648,12 @@ TINT32 CProcessAlliance::ProcessCmd_AlGiftGet(SSession *pstSession, TBOOL &bNeed
         }
         if (NULL == ptbAlGiftReward)
         {
-            continue;
+            ptbAlGiftReward = &pstUser->m_atbAlGiftReward[pstUser->m_udwAlGiftRewardNum];
+            dwRewardIdx = pstUser->m_udwAlGiftRewardNum;
+            pstUser->m_udwAlGiftRewardNum++;
+            ptbAlGiftReward->Set_Uid(pstUser->m_tbPlayer.m_nUid);
+            ptbAlGiftReward->Set_Gid(ptbAlGift->m_nId);
+            ptbAlGiftReward->Set_Status(EN_AL_GIFT_STATUS_NORMAL);
         }
 
         if (ptbAlGiftReward->m_nStatus == EN_AL_GIFT_STATUS_NORMAL && (ptbAlGift->m_nCtime + AL_IAP_GIFT_EXPIRE_TIME) < ddwCurTime &&
@@ -3637,6 +3661,7 @@ TINT32 CProcessAlliance::ProcessCmd_AlGiftGet(SSession *pstSession, TBOOL &bNeed
         {
             audwExpired[udwExpiredNum] = dwIdx;
             audwAlReward[udwExpiredNum] = dwRewardIdx;
+            pstUser->m_aucAlGiftRewardFlag[dwRewardIdx] = EN_TABLE_UPDT_FLAG__CHANGE;
             ++udwExpiredNum;
             if (udwExpiredNum >= AL_GIFT_OPEN_RSP_NUM)
             {
@@ -3750,7 +3775,7 @@ TINT32 CProcessAlliance::ProcessCmd_AlGiftGet(SSession *pstSession, TBOOL &bNeed
                 TSE_LOG_DEBUG(pstSession->m_poServLog, ("ProcessCmd_AlGiftGet: rsp al_reward gid[%ld]. [seq=%u]",
                     ptbAlGiftReward->m_nGid, pstSession->m_stUserInfo.m_udwBSeqNo));
 
-                for (TUINT32 udwIdx = 0; udwIdx < MAX_REWARD_ITEM_NUM && udwIdx < stRefreshData.m_stAllianceGiftRsp.m_sAllianceGift[udwGiftIdx].m_vecReward.size(); ++udwIdx)
+                for (TUINT32 udwIdx = 0; udwIdx < TBAL_GIFT_REWARD_REWARD_MAX_NUM && udwIdx < stRefreshData.m_stAllianceGiftRsp.m_sAllianceGift[udwGiftIdx].m_vecReward.size(); ++udwIdx)
                 {
                     SOneGlobalRes *pstReward = stRefreshData.m_stAllianceGiftRsp.m_sAllianceGift[udwGiftIdx].m_vecReward[udwIdx];
                     ptbAlGiftReward->m_bReward[ptbAlGiftReward->m_bReward.m_udwNum].ddwType = pstReward->ddwType;
@@ -3808,56 +3833,81 @@ TINT32 CProcessAlliance::ProcessCmd_AlGiftDel(SSession *pstSession, TBOOL &bNeed
         if(pstSession->m_stUserInfo.m_atbAlGiftReward[udwIdx].m_nGid == ddwGiftId)
         {
             ptbAlGiftReward = &pstSession->m_stUserInfo.m_atbAlGiftReward[udwIdx];
+            pstSession->m_stUserInfo.m_aucAlGiftRewardFlag[udwIdx] = EN_TABLE_UPDT_FLAG__CHANGE;
+            ptbAlGiftReward->Set_Status(EN_AL_GIFT_STATUS_CLEARED);
             break;
         }
     }
-
-    if(NULL == ptbAlGiftReward)
-    {
-        pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__REQ_PARAM_ERROR;
-        TSE_LOG_ERROR(pstSession->m_poServLog, ("ProcessCmd_AlGiftOpen: gift status error. [id=%ld][status=%d] [seq=%u]",
-            ddwGiftId, 0, pstSession->m_stUserInfo.m_udwBSeqNo));
-        return 0;
-    }
-    // set data package
-    ptbAlGiftReward->Set_Status(EN_AL_GIFT_STATUS_CLEARED);
 
     return 0;
 }
 
 TINT32 CProcessAlliance::ProcessCmd_AlGiftDelAll(SSession *pstSession, TBOOL &bNeedResponse)
 {
-    TbAl_gift_reward* ptbAlGift = NULL;
+    TbAl_gift_reward* ptbAlGiftReward = NULL;
+    TbAl_gift* ptbAlGift = NULL;
+    SUserInfo *pstUser = &pstSession->m_stUserInfo;
 
     if(pstSession->m_stUserInfo.m_tbPlayer.m_nAlpos == EN_ALLIANCE_POS__REQUEST)
     {
         pstSession->m_stCommonResInfo.m_dwRetCode = EN_RET_CODE__NOT_IN_ALLIANCE;
         return -1;
     }
-    TBOOL bNeedDelete = FALSE;
-    for(TUINT32 udwIdx = 0; udwIdx < pstSession->m_stUserInfo.m_udwAlGiftRewardNum && udwIdx < MAX_AL_IAP_GIFT_NUM * 2; udwIdx++)
+
+    TUINT32 udwCurTime = CTimeUtils::GetUnixTime();
+
+    if (pstUser->m_tbClearAlGift.m_nUid == 0)
     {
-        ptbAlGift = &pstSession->m_stUserInfo.m_atbAlGiftReward[udwIdx];
-        bNeedDelete = FALSE;
-        if(ptbAlGift->m_nStatus == EN_AL_GIFT_STATUS_OPENED)
+        pstUser->m_tbClearAlGift.Set_Uid(pstUser->m_tbPlayer.m_nUid);
+    }
+
+    set<TINT64> setClearAlGift;
+    for (TUINT32 udwIdx = 0; udwIdx < pstUser->m_tbClearAlGift.m_bClear_al_gift.m_udwNum; udwIdx++)
+    {
+        setClearAlGift.insert(pstUser->m_tbClearAlGift.m_bClear_al_gift[udwIdx]);
+    }
+
+    set<TINT64> setNewAlGift;
+
+    TBOOL bHasNew = FALSE;
+    for (TINT32 dwIdx = 0; dwIdx < pstSession->m_stUserInfo.m_stAlGifts.m_dwGiftNum && dwIdx < MAX_AL_IAP_GIFT_NUM_SVR; dwIdx++)
+    {
+        ptbAlGift = &pstSession->m_stUserInfo.m_stAlGifts[dwIdx];
+        if (ptbAlGift->m_nCtime + AL_IAP_GIFT_EXPIRE_TIME < udwCurTime)
         {
-            bNeedDelete = TRUE;
-        }
-        else
-        {
-            for(TINT32 dwIdx = 0; dwIdx < pstSession->m_stUserInfo.m_stAlGifts.m_dwGiftNum; dwIdx++)
+            setNewAlGift.insert(ptbAlGift->m_nId);
+            if (setClearAlGift.count(ptbAlGift->m_nId) == 0)
             {
-                if(pstSession->m_stUserInfo.m_stAlGifts[dwIdx].m_nId == ptbAlGift->m_nGid
-                    && (TUINT64)(pstSession->m_stUserInfo.m_stAlGifts[dwIdx].m_nCtime + AL_IAP_GIFT_EXPIRE_TIME) < CTimeUtils::GetCurTimeUs())
-                {
-                    bNeedDelete = TRUE;
-                }
+                bHasNew = TRUE;
             }
+            continue;
         }
 
-        if(TRUE == bNeedDelete)
+        for (TUINT32 udwIdy = 0; udwIdy < pstSession->m_stUserInfo.m_udwAlGiftRewardNum; udwIdy++)
         {
-            ptbAlGift->Set_Status(EN_AL_GIFT_STATUS_CLEARED);
+            ptbAlGiftReward = &pstSession->m_stUserInfo.m_atbAlGiftReward[udwIdy];
+            if (ptbAlGiftReward->m_nGid == ptbAlGift->m_nId)
+            {
+                if (ptbAlGiftReward->m_nStatus == EN_AL_GIFT_STATUS_OPENED)
+                {
+                    setNewAlGift.insert(ptbAlGift->m_nId);
+                    if (setClearAlGift.count(ptbAlGift->m_nId) == 0)
+                    {
+                        bHasNew = TRUE;
+                    }
+                }
+                break;
+            }
+        }
+    }
+
+    if (bHasNew)
+    {
+        pstUser->m_tbClearAlGift.m_bClear_al_gift.Reset();
+        pstUser->m_tbClearAlGift.SetFlag(TbCLEAR_AL_GIFT_FIELD_CLEAR_AL_GIFT);
+        for (set<TINT64>::iterator it = setNewAlGift.begin(); it != setNewAlGift.end(); it++)
+        {
+            pstUser->m_tbClearAlGift.m_bClear_al_gift[pstUser->m_tbClearAlGift.m_bClear_al_gift.m_udwNum++] = *it;
         }
     }
 

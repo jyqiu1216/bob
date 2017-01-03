@@ -133,6 +133,12 @@ public:
 
     static TBOOL IsValidName(const string& strName, const TINT32 dwType);
 
+    // function  ===> 获取用户的client_action_id
+    // in_value  ===> ddwUid: 用户的uid
+    //           ===> udwSeq: 生成action时的seq号
+    // out_value ===> 返回用户的client_action_id
+    static TUINT64 GetClientBuildTaskId(TINT64 ddwUid, TUINT32 udwClientSeq);
+
 private:
     // function  ===> curl库对于请求结果保存的回调函数
     // writedata

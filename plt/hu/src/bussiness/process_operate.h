@@ -105,9 +105,22 @@ public:
 
     static TINT32 ProcessCmd_GenThrone(SSession *pstSession, TBOOL &bNeedResponse);
 
+    static TINT32 ProcessCmd_SetThronePeaceTime(SSession *pstSession, TBOOL &bNeedResponse);
+
     static TINT32 ProcessCmd_UpgradeNpcToLv10(SSession *pstSession, TBOOL &bNeedResponse);
 
     static TINT32 ProcessCmd_GetRank(SSession *pstSession, TBOOL &bNeedResponse);
+
+    static TINT32 ProcessCmd_RecallInvalidRallyReinforce(SSession *pstSession, TBOOL &bNeedResponse);
+
+    static TINT32 ProcessCmd_DeleteAction(SSession *pstSession, TBOOL &bNeedResponse);
+
+    static TINT32 ProcessCmd_ClearDecoration(SSession *pstSession, TBOOL &bNeedResponse);
+
+    static TINT32 ProcessCmd_DeleteLordImage(SSession *pstSession, TBOOL &bNeedResponse);
+
+    static TINT32 ProcessCmd_MinusTroop(SSession *pstSession, TBOOL &bNeedResponse);
+    static TINT32 ProcessCmd_AddBufTime(SSession *pstSession, TBOOL &bNeedResponse);
 
 private:
     static TBOOL TbPlayer_Compare(const TbPlayer *pstA, const TbPlayer *pstB);

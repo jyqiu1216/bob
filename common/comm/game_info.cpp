@@ -48,7 +48,11 @@ TINT32 CGameInfo::Init(const TCHAR *pszFileName, CTseLogger *poLog)
         TSE_LOG_INFO(m_poLog, ("CGameInfo::Init: parse file[%s] success.", pszFileName));
         is.close();
     }
-
+    if (LoadSubGame(SUB_GAME_JSON_FILE, m_poLog) < 0)
+    {
+        return -3;
+    }
+    
     InitArmyData();
     LoadAttackOrder(m_objAttackFactor);
 
@@ -483,7 +487,7 @@ TINT32 CGameInfo::InitArmyData()
 
         if(m_aTroop[idx].m_bValid)
         {
-            assert(idx < MAX_ARMY_TIER_LIMIT);
+            assert(m_aTroop[idx].m_dwTier < MAX_ARMY_TIER_LIMIT);
             m_avecTierList[m_aTroop[idx].m_dwTier].push_back(dwArmyId);
         }
         
@@ -499,7 +503,7 @@ TINT32 CGameInfo::InitArmyData()
 
         if(m_aFort[idx].m_bValid)
         {
-            assert(idx < MAX_ARMY_TIER_LIMIT);
+            assert(m_aFort[idx].m_dwTier < MAX_ARMY_TIER_LIMIT);
             m_avecTierList[m_aFort[idx].m_dwTier].push_back(dwArmyId);
         }
     }
@@ -636,4 +640,71 @@ TVOID CGameInfo::LoadTaskList()
 
     //TSE_LOG_DEBUG(CGameInfo::GetInstance()->m_poLog, ("NEMO TASK_LIST: %s",
     //    oss.str().c_str()));
+}
+
+TINT32 CGameInfo::LoadSubGame(const TCHAR *pszFileName, CTseLogger *poLog)
+{
+    if (pszFileName == NULL || poLog == NULL)
+    {
+        return -1;
+    }
+    // 1. 解析json用Json::Reader
+    Json::Reader reader;
+    Json::Value tmpRawJson;
+
+    // Json::Value是一种很重要的类型，可以代表任意类型。如int, string, object, array...
+    //Json::Value root; 
+    std::ifstream is;
+    is.open(pszFileName, std::ios::binary);
+    if (!is)
+    {
+        return 0;
+    }
+    if (reader.parse(is, tmpRawJson) == false)
+    {
+        TSE_LOG_ERROR(m_poLog, ("CGameInfo::Init: parse file[%s] failed.", pszFileName));
+        is.close();
+        return -2;
+    }
+    else
+    {
+        //Load sub_game.json
+        Json::Value::Members jMembers = tmpRawJson.getMemberNames();
+        for (TUINT32 udwIdx = 0; udwIdx < jMembers.size(); udwIdx++)
+        {
+            TCHAR *pSubGame = jMembers[udwIdx].c_str();
+            pSubGame = strchr(pSubGame, '_');
+            pSubGame++;
+            if (!m_oJsonRoot.isMember(pSubGame))
+            {
+                m_oJsonRoot[pSubGame] = tmpRawJson[jMembers[udwIdx]];
+                continue;
+            }
+            Json::Value::Members jSubMembs = tmpRawJson[jMembers[udwIdx]].getMemberNames();
+            for (TUINT32 udwIdy = 0; udwIdy < jSubMembs.size(); udwIdy++)
+            {
+                if (m_oJsonRoot[pSubGame].isMember(jSubMembs[udwIdy]))
+                {
+                    continue;
+                }
+                m_oJsonRoot[pSubGame][jSubMembs[udwIdy]] = tmpRawJson[jMembers[udwIdx]][jSubMembs[udwIdy]];
+            }
+        }
+        TSE_LOG_INFO(m_poLog, ("CGameInfo::LoadSubGame: parse file[%s] success.", pszFileName));
+        is.close();
+        //for debug
+        //std::ofstream tmp;
+        //tmp.open("../tmp.txt");
+        //if (!tmp)
+        //{
+        //    return -3;
+        //}
+        //string strJson;
+        //Json::FastWriter writer;
+        //writer.omitEndingLineFeed();
+        //strJson = writer.write(m_oJsonRoot);
+        //tmp << strJson.c_str() << endl;
+        //tmp.close();
+    }
+    return 0;
 }

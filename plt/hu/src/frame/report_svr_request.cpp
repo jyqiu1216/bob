@@ -176,6 +176,23 @@ TINT32 CReportSvrRequest::SetMailRewardCollect(SSession* pstSession, TINT64 ddwM
     return 0;
 }
 
+TINT32 CReportSvrRequest::SetMailRewardCollect(SSession* pstSession, TbPlayer *ptbPlayer, TbUser_stat *ptbUserStat, TINT64 ddwMailId)
+{
+    ostringstream oss;
+    oss.str("");
+
+    ReportReqInfo *pReq = new ReportReqInfo;
+    pstSession->m_vecReportReq.push_back(pReq);
+
+    TINT64 ddwAlid = ptbPlayer->m_nAlpos != EN_ALLIANCE_POS__REQUEST ? ptbPlayer->m_nAlid / PLAYER_ALLIANCE_ID_OFFSET : 0;
+
+    pReq->udwReqType = 1;
+    oss << EN_MAIL_USER_OP__MAIL_REWARDCOLLECT << ',' << ptbPlayer->m_nUid << ',' << ddwAlid
+        << ',' << ptbUserStat->m_nBirth_m << ',' << ddwMailId;
+    pReq->sReqContent = oss.str();
+    return 0;
+}
+
 TINT32 CReportSvrRequest::MailUserPut(SSession* pstSession, TbMail_user *atbMailUser, TUINT32 udwMailUserNum)
 {
     ostringstream oss;

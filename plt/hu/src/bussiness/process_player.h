@@ -53,10 +53,13 @@ public:
     static TINT32 ProcessCmd_DragonAvatarChange(SSession* pstSession, TBOOL& bNeedResponse);
 
     static TINT32 ProcessCmd_LordSkillUpgrade(SSession* pstSession, TBOOL& bNeedResponse);
+    static TINT32 ProcessCmd_LordSkillUpgradeNew(SSession* pstSession, TBOOL& bNeedResponse);
     static TINT32 ProcessCmd_LordSkillReset(SSession* pstSession, TBOOL& bNeedResponse);
     static TINT32 ProcessCmd_DragonSkillUpgrade(SSession* pstSession, TBOOL& bNeedResponse);
+    static TINT32 ProcessCmd_DragonSkillUpgradeNew(SSession* pstSession, TBOOL& bNeedResponse);
     static TINT32 ProcessCmd_DragonSkillReset(SSession* pstSession, TBOOL& bNeedResponse);
     static TINT32 ProcessCmd_DragonMonsterSkillUpgrade(SSession* pstSession, TBOOL& bNeedResponse);
+    static TINT32 ProcessCmd_DragonMonsterSkillUpgradeNew(SSession* pstSession, TBOOL& bNeedResponse);
     static TINT32 ProcessCmd_DragonMonsterSkillReset(SSession* pstSession, TBOOL& bNeedResponse);
 
     static TINT32 ProcessCmd_QuestClaim(SSession *pstSession, TBOOL& bNeedResponse);
@@ -118,6 +121,11 @@ public:
     static TINT32 ProcessCmd_TrialLuckyBagRage(SSession *pstSession, TBOOL& bNeesResponse);
     static TINT32 ProcessCmd_TrialGiftCollect(SSession *pstSession, TBOOL& bNeesResponse);
     static TINT32 ProcessCmd_FinishGuide(SSession *pstSession, TBOOL& bNeesResponse);
+
+    static TINT32 ProcessCmd_BuildDecoration(SSession *pstSession, TBOOL &bNeedResponse);
+    static TINT32 ProcessCmd_OpenDecorationList(SSession *pstSession, TBOOL &bNeedResponse);
+    static TINT32 ProcessCmd_DeleteDecoration(SSession *pstSession, TBOOL &bNeedResponse);
+    static TINT32 ProcessCmd_GiveGift(SSession *pstSession, TBOOL& bNeedResponse);
 
 private:
     static TINT32 Relive(SUserInfo *pstUser, SCityInfo *pstCity, TUINT8 ucTargetType, 

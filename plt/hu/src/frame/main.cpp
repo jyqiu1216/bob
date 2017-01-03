@@ -20,6 +20,8 @@
 #include "lock_info.h"
 #include "dragon_trail_control.h"
 #include "global_gift.h"
+#include "appsflyer_countries.h"
+#include "blog_time.h"
 
 // 0: 初始状态
 // -1: stop
@@ -108,12 +110,13 @@ int main(int argc,char** argv)
 		}
 
         //更新game.json配置
-        if (access(UPDATE_GAME_JSON_FLAG_FILE, F_OK) == 0)
+        if (access(UPDATE_GAME_JSON_FLAG_FILE, F_OK) == 0 || access(UPDATE_SUB_GAME_JSON_FLAG_FILE, F_OK) == 0)
         {
             TSE_LOG_INFO(CGlobalServ::m_poServLog, ("beg to update game conf"));
             if (CGameInfo::Update("../data/game.json", CGlobalServ::m_poServLog) == 0)
             {
                 remove(UPDATE_GAME_JSON_FLAG_FILE);
+                remove(UPDATE_SUB_GAME_JSON_FLAG_FILE);
             }
         }
 
@@ -228,15 +231,25 @@ int main(int argc,char** argv)
                 remove(UPDATE_FUNC_OPEN_JSON_FLAG_FILE);
             }
         }
+
+        if (access(UPDATE_COUNTRIES_FLAG, F_OK) == 0)
+        {
+            TSE_LOG_INFO(CGlobalServ::m_poServLog, ("beg to update appsflyers conf"));
+            if (CAppsflyerCountries::Update() == 0)
+            {
+                remove(UPDATE_COUNTRIES_FLAG);
+            }
+        }
         // ======================================================================================
         // 更新文案document
         // 1. 所有
-        if(access(UPDATE_DOCUMENT_ALL_FLAG_FILE, F_OK) == 0)
+        if (access(UPDATE_DOCUMENT_ALL_FLAG_FILE, F_OK) == 0 || access(UPDATE_SUB_DOCUMENT_ALL_FLAG_FILE, F_OK) == 0)
         {
             TSE_LOG_INFO(CGlobalServ::m_poServLog, ("beg to update all document"));
             if (CDocument::Update_All(CGlobalServ::m_poServLog) == 0)
             {
                 remove(UPDATE_DOCUMENT_ALL_FLAG_FILE);
+                remove(UPDATE_SUB_DOCUMENT_ALL_FLAG_FILE);
             }
         }
 
@@ -368,6 +381,16 @@ int main(int argc,char** argv)
                 TSE_LOG_ERROR(CGlobalServ::m_poServLog, ("update event rule info failed"));
             }
         }
+        //更新blog_time配置
+        if (access(UPDATE_BLOG_TIME_FLAG_FILE, F_OK) == 0)
+        {
+            TSE_LOG_INFO(CGlobalServ::m_poServLog, ("beg to update blog time"));
+            if (CBlogTime::Update("../data/blog_time.file", CGlobalServ::m_poServLog) == 0)
+            {
+                remove(UPDATE_BLOG_TIME_FLAG_FILE);
+            }
+        }
+
 		sleep(1);
 	}
 

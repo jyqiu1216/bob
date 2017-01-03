@@ -186,6 +186,20 @@ int CAwsRequest::UserStatGet(SSession *pstSession, TUINT32 udwUid)
     return GetItem(pstSession, &tbUser_stat, ETbUSERSTAT_OPEN_TYPE_PRIMARY);
 }
 
+int CAwsRequest::LordImageGet(SSession *pstSession, TUINT32 udwUid)
+{
+    TbLord_image tbLord_Image;
+    tbLord_Image.Set_Uid(udwUid);
+    return GetItem(pstSession, &tbLord_Image, ETbLORDIMAGE_OPEN_TYPE_PRIMARY);
+}
+
+int CAwsRequest::DecorationGet(SSession *pstSession, TUINT32 udwUid)
+{
+    TbDecoration tbDecoration;
+    tbDecoration.Set_Uid(udwUid);
+    return GetItem(pstSession, &tbDecoration, ETbDECORATION_OPEN_TYPE_PRIMARY);
+}
+
 int CAwsRequest::BlackAccountGet(SSession *pstSession, TINT64 ddwUid)
 {
     TbBlack_account tbBlack_account;
@@ -393,7 +407,7 @@ int CAwsRequest::EventTipsQuery(SSession *pstSession, TINT64 ddwUid, TUINT32 udw
     return Query(pstSession, &tbEventTips, ETbEVENTTIPS_OPEN_TYPE_PRIMARY, comp_desc, true, true, true, udwLimit);
 }
 
-
+/*
 int CAwsRequest::AlEventTipsQuery(SSession *pstSession, TINT64 ddwAlid, TUINT32 udwLimit)
 {
     TbUser_stat &tbStat = pstSession->m_stUserInfo.m_tbUserStat;
@@ -407,6 +421,7 @@ int CAwsRequest::AlEventTipsQuery(SSession *pstSession, TINT64 ddwAlid, TUINT32 
 
     return Query(pstSession, &tbEventTips, ETbEVENTTIPS_OPEN_TYPE_TIME, comp_desc, true, true, true, udwLimit);
 }
+*/
 
 int CAwsRequest::AllianceWallQuery(SSession *pstSession, TUINT32 udwAlId)
 {
@@ -1039,6 +1054,11 @@ void CAwsRequest::UpdateUserAccountInfo(SSession *pstSession, TbLogin* pTbLogin,
         && pstReqParam->m_ucLoginStatus == EN_LOGIN_STATUS__LOGIN) // 没有填写idfa时，进行填写
     {
         pTbLogin->Set_Idfa(pstReqParam->m_szIdfa);
+    }
+
+    if (strcmp(pTbLogin->m_sCur_platform.c_str(), pstReqParam->m_szPlatForm) != 0) //更新实时平台信息
+    {
+        pTbLogin->Set_Cur_platform(pstReqParam->m_szPlatForm);
     }
 
     // wave@20140217: 限制login表seq、utime、apns_num的更新频率
